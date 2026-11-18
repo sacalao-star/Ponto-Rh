@@ -1,0 +1,35 @@
+REGRAS DO FIRESTORE (FIREBASE CONSOLE -> FIRESTORE DATABASE -> REGRAS)
+========================================================================
+Cole exatamente o bloco abaixo nas Regras do Firestore do projeto pontorh-usija
+e clique em PUBLICAR. Isso permite que todos os espectadores vejam os dados
+em tempo real e garante que apenas os administradores cadastrados alterem algo:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isPontoAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'sacalao660@gmail.com' ||
+        (
+          exists(/databases/$(database)/documents/pontorh_config/geral) &&
+          request.auth.token.email in get(/databases/$(database)/documents/pontorh_config/geral).data.admins
+        )
+      );
+    }
+
+    match /pontorh_colaboradores/{docId} {
+      allow read: if true;
+      allow write: if isPontoAdmin();
+    }
+
+    match /pontorh_pontos/{docId} {
+      allow read: if true;
+      allow write: if isPontoAdmin();
+    }
+
+    match /pontorh_config/{docId} {
+      allow read: if true;
+      allow write: if isPontoAdmin();
+    }
+  }
+}

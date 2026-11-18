@@ -1,0 +1,3989 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="application-name" content="PontoRH">
+<meta name="apple-mobile-web-app-title" content="PontoRH">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1d4ed8">
+<title>PontoRH — Gestão de Equipe, Ponto & Fechamento</title>
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="manifest" href="./manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js" defer></script>
+<style>
+:root{
+  --bg:#f4f6fa;--card:#ffffff;--sub:#f8fafd;--tx:#0f172a;--mut:#5b667a;--bd:#e2e8f0;
+  --ac:#1d4ed8;--ac2:#1e40af;--acs:#e8efff;--onac:#ffffff;
+  --bad:#b42318;--bads:#fee4e2;
+  --ok:#067647;--oks:#dcfae6;
+  --warn:#b54708;--warns:#fef0c7;
+  --mei:#6941c6;--meis:#f4ebff;
+  --sh-sm:0 1px 2px rgba(15,23,42,0.04),0 1px 3px rgba(15,23,42,0.02);
+  --sh-md:0 10px 25px -5px rgba(15,23,42,0.07),0 4px 10px -4px rgba(15,23,42,0.03);
+  --sh-lg:0 24px 48px -12px rgba(15,23,42,0.26);
+  --glass:rgba(255,255,255,0.92);
+  --sidebar-bg:rgba(255,255,255,0.97);
+  --header-h:58px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px)
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f17;--card:#131923;--sub:#1a2230;--tx:#e8edf5;--mut:#94a3b8;--bd:#253042;
+  --ac:#6ea8fe;--ac2:#8bb9fe;--acs:#1a2b4c;--onac:#09111e;
+  --bad:#f97066;--bads:#3a191b;
+  --ok:#47cd89;--oks:#133124;
+  --warn:#fdb022;--warns:#382611;
+  --mei:#b692f6;--meis:#2c1c4d;
+  --sh-sm:0 1px 3px rgba(0,0,0,0.25);
+  --sh-md:0 10px 28px -6px rgba(0,0,0,0.45);
+  --sh-lg:0 24px 54px -12px rgba(0,0,0,0.65);
+  --glass:rgba(19,25,35,0.92);
+  --sidebar-bg:rgba(19,25,35,0.98);
+  color-scheme:dark
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--tx);
+  font:14.5px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .25s ease,color .25s ease
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:35;background:var(--card)}
+
+/* =========================================================
+   TELA DE ABERTURA NATIVA (SPLASH SCREEN ESTILO APP STORE)
+   ========================================================= */
+#app-splash{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:48px 24px calc(36px + env(safe-area-inset-bottom,0px));
+  transition:opacity .38s ease,visibility .38s ease;
+}
+#app-splash.hide{
+  opacity:0;visibility:hidden;pointer-events:none;
+}
+.splash-center{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  animation:springModalIn .45s cubic-bezier(.16,1,.3,1) forwards;
+}
+.splash-logo{
+  width:54px;height:54px;border-radius:15px;
+  background:linear-gradient(135deg,var(--ac),var(--ac2));
+  color:var(--onac);display:grid;place-items:center;
+  box-shadow:0 10px 24px color-mix(in srgb,var(--ac) 34%,transparent);
+}
+.splash-title{
+  font-size:29px;font-weight:700;letter-spacing:-0.03em;color:var(--tx);
+}
+.splash-bottom{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.splash-spinner{
+  width:34px;height:34px;border-radius:50%;
+  border:3.2px solid color-mix(in srgb,var(--ac) 20%,transparent);
+  border-top-color:var(--ac);
+  animation:spinRing .85s linear infinite;
+}
+@keyframes spinRing{to{transform:rotate(360deg)}}
+.splash-ver{
+  font-size:13px;font-weight:500;color:var(--mut);letter-spacing:0.01em;
+}
+
+/* =========================================================
+   CONTROLE DE PERMISSÃO (ESPECTADOR vs ADMINISTRADOR)
+   ========================================================= */
+body.read-only-mode .admin-only{display:none !important}
+body.admin-mode .viewer-only{display:none !important}
+body.read-only-mode #point-table tr.cl,
+body.read-only-mode .doc-row-item{cursor:default !important}
+body.read-only-mode #point-table tr.cl:hover,
+body.read-only-mode .doc-row-item:hover{background:transparent !important}
+
+/* =========================================================
+   CABEÇALHO PRINCIPAL (HAMBÚRGUER À ESQUERDA + MARCA CENTRAL + ACESSO)
+   ========================================================= */
+.top{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:30;
+  background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--bd);
+  transition:background-color .25s ease,border-color .25s ease
+}
+.top-bar{
+  max-width:1100px;margin:0 auto;height:var(--header-h);
+  padding:0 14px;
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+}
+.top-left{display:flex;align-items:center;justify-content:flex-start}
+.top-right{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.menu-toggle-btn{
+  width:40px;height:40px;border-radius:10px;border:1px solid transparent;
+  background:transparent;color:var(--tx);
+  display:grid;place-items:center;cursor:pointer;
+  transition:background-color .18s ease,border-color .18s ease,transform .15s ease
+}
+.menu-toggle-btn:hover{background:var(--sub);border-color:var(--bd)}
+.menu-toggle-btn:active{transform:scale(0.94)}
+.brand-center{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+}
+.app-logo{
+  width:35px;height:35px;border-radius:10px;
+  background:linear-gradient(135deg,var(--ac),var(--ac2));
+  color:var(--onac);display:grid;place-items:center;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--ac) 32%,transparent);
+  flex:none;transition:transform .2s cubic-bezier(.34,1.56,.64,1)
+}
+.app-logo:hover{transform:scale(1.06) rotate(-4deg)}
+.brand-center b{font-size:19.5px;letter-spacing:-0.025em}
+
+.admin-access-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 10px;border-radius:99px;
+  border:1px solid var(--bd);background:var(--sub);color:var(--mut);
+  font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .18s ease;
+}
+.admin-access-pill:hover{
+  border-color:var(--ac);color:var(--ac);background:var(--acs);
+}
+
+/* ABAS DE NAVEGAÇÃO */
+.nav-strip{
+  border-top:1px solid color-mix(in srgb,var(--bd) 65%,transparent);
+  background:color-mix(in srgb,var(--card) 75%,transparent);
+}
+nav{
+  max-width:1100px;margin:0 auto;padding:0 14px;
+  position:relative;display:flex;overflow-x:auto;gap:4px;scrollbar-width:none
+}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  position:relative;white-space:nowrap;border:0;background:none;color:var(--mut);
+  padding:11px 14px;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:color .2s ease
+}
+nav button:hover{color:var(--tx)}
+nav button.on{color:var(--ac);font-weight:600}
+.nav-ink{
+  position:absolute;bottom:0;left:0;height:3px;border-radius:3px 3px 0 0;
+  background:var(--ac);pointer-events:none;
+  transition:transform .28s cubic-bezier(.22,1,.36,1),width .28s cubic-bezier(.22,1,.36,1)
+}
+.nav-cnt{
+  background:var(--bads);color:var(--bad);font-size:11px;font-weight:700;
+  padding:1px 6px;border-radius:99px
+}
+
+/* =========================================================
+   ABA LATERAL (SIDEBAR DRAWER)
+   ========================================================= */
+.sidebar-backdrop{
+  position:fixed;inset:0;z-index:38;
+  background:rgba(9,13,22,0.34);
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+  opacity:0;pointer-events:none;
+  transition:opacity .24s ease;
+}
+body.sidebar-open .sidebar-backdrop{opacity:1;pointer-events:auto}
+
+.app-sidebar{
+  position:fixed;
+  top:calc(var(--header-h) + env(safe-area-inset-top,0px));
+  left:0;bottom:0;
+  width:282px;max-width:84vw;
+  z-index:40;
+  background:var(--sidebar-bg);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-right:1px solid var(--bd);
+  box-shadow:12px 0 36px rgba(15,23,42,0.12);
+  padding:16px 14px 24px;
+  display:flex;flex-direction:column;gap:6px;
+  overflow-y:auto;
+  transform:translateX(-104%);
+  transition:transform .28s cubic-bezier(.22,1,.36,1),background-color .25s ease,border-color .25s ease;
+}
+body.sidebar-open .app-sidebar{transform:translateX(0)}
+
+.sidebar-sync-card{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:11px 12px;border-radius:11px;
+  background:color-mix(in srgb,var(--ok) 8%,var(--sub));
+  border:1px solid color-mix(in srgb,var(--ok) 25%,var(--bd));
+  margin-bottom:8px;
+  transition:background-color .2s ease,border-color .2s ease;
+}
+.sidebar-sync-card.err{
+  background:color-mix(in srgb,var(--bad) 8%,var(--sub));
+  border-color:color-mix(in srgb,var(--bad) 25%,var(--bd));
+}
+.sidebar-sync-card.syncing{
+  background:color-mix(in srgb,var(--warn) 8%,var(--sub));
+  border-color:color-mix(in srgb,var(--warn) 25%,var(--bd));
+}
+.sidebar-cloud-ico{flex:none;margin-top:2px;color:var(--ok)}
+.sidebar-sync-card.err .sidebar-cloud-ico{color:var(--bad)}
+.sidebar-sync-card.syncing .sidebar-cloud-ico{color:var(--warn)}
+.sidebar-sync-text{font-size:12.5px;font-weight:600;line-height:1.35;color:var(--ok)}
+.sidebar-sync-card.err .sidebar-sync-text{color:var(--bad)}
+.sidebar-sync-card.syncing .sidebar-sync-text{color:var(--warn)}
+
+.sidebar-sec-label{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+  color:var(--mut);padding:8px 10px 2px;
+}
+
+.side-item{
+  width:100%;display:flex;align-items:center;gap:11px;
+  padding:11px 12px;border-radius:10px;
+  border:1px solid transparent;background:transparent;color:var(--tx);
+  font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer;
+  transition:background-color .16s ease,color .16s ease,border-color .16s ease,transform .14s ease;
+}
+.side-item svg{flex:none;color:var(--mut);transition:color .16s ease}
+.side-item:hover{
+  background:var(--sub);border-color:var(--bd);color:var(--ac);transform:translateX(2px);
+}
+.side-item:hover svg{color:var(--ac)}
+.side-item:active{transform:scale(0.98)}
+
+.side-item.import-item:hover{
+  background:color-mix(in srgb,var(--ok) 10%,var(--sub));
+  border-color:color-mix(in srgb,var(--ok) 32%,var(--bd));
+  color:var(--ok);
+}
+.side-item.import-item:hover svg{color:var(--ok)}
+
+.side-item.export-item:hover{
+  background:color-mix(in srgb,var(--ac) 10%,var(--sub));
+  border-color:color-mix(in srgb,var(--ac) 32%,var(--bd));
+  color:var(--ac);
+}
+
+.side-item.danger{margin-top:auto;color:var(--bad)}
+.side-item.danger svg{color:var(--bad)}
+.side-item.danger:hover{
+  background:var(--bads);
+  border-color:color-mix(in srgb,var(--bad) 30%,transparent);
+  color:var(--bad);
+}
+.sidebar-divider{height:1px;background:var(--bd);margin:6px 4px}
+
+/* MAIN LAYOUT & CARDS */
+main{max-width:1100px;margin:0 auto;padding:16px 14px 40px}
+.c{
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px;
+  box-shadow:var(--sh-sm);
+  transition:box-shadow .22s ease,border-color .22s ease,transform .22s cubic-bezier(.22,1,.36,1),background-color .25s ease
+}
+.c-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.c-hd h2{margin:0}
+h2{font-size:15.5px;font-weight:600;margin:0 0 10px;letter-spacing:-0.015em}
+.m{color:var(--mut);font-size:13px;margin:0 0 8px}
+
+/* MONTH BANNER */
+.month-strip{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  background:linear-gradient(135deg, color-mix(in srgb,var(--ac) 9%,var(--card)), color-mix(in srgb,var(--ok) 11%,var(--card)));
+  border:1.5px solid color-mix(in srgb,var(--ac) 36%,var(--bd));
+  border-radius:14px;
+  padding:14px 18px;margin-bottom:14px;
+  box-shadow:var(--sh-sm)
+}
+.month-strip-l{display:flex;align-items:center;gap:12px}
+.live-dot{
+  width:11px;height:11px;border-radius:50%;background:var(--ok);flex:none;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 18%,transparent)
+}
+.month-title{font-size:17px;font-weight:700;letter-spacing:-0.015em}
+.month-sub{font-size:12.5px;color:var(--mut);margin-top:2px}
+
+.toolbar{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;margin-bottom:14px;
+  box-shadow:var(--sh-sm)
+}
+.toolbar-grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* SELETOR SIMÉTRICO (NOME CENTRALIZADO E SETAS ABAIXO PARA OS LADOS) */
+.emp-nav-card{
+  background:var(--card);border:1px solid var(--bd);border-radius:13px;
+  padding:14px 16px;margin-bottom:14px;box-shadow:var(--sh-sm);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.emp-nav-top{
+  width:100%;max-width:520px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
+}
+.emp-nav-select{
+  width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:9px;
+  background:var(--sub);color:var(--tx);font:inherit;font-size:14px;font-weight:600;
+  text-align:center;text-align-last:center;cursor:pointer;
+  transition:border-color .18s ease,box-shadow .18s ease;
+}
+.emp-nav-select:focus{
+  outline:none;border-color:var(--ac);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 16%,transparent);
+}
+.emp-nav-arrows{
+  width:100%;max-width:520px;
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;
+}
+.emp-arrow-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 12px;border-radius:9px;
+  border:1px solid color-mix(in srgb,var(--ac) 32%,var(--bd));
+  background:var(--acs);color:var(--ac);
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  transition:background-color .16s ease,color .16s ease,transform .14s ease;
+}
+.emp-arrow-btn:hover:not(:disabled){background:var(--ac);color:var(--onac)}
+.emp-arrow-btn:active:not(:disabled){transform:scale(0.97)}
+.emp-arrow-btn:disabled{opacity:0.45;cursor:not-allowed}
+
+.inp, .sel-sm{
+  padding:8px 11px;border:1px solid var(--bd);border-radius:8px;
+  background:var(--sub);color:var(--tx);font:inherit;font-size:13px;
+  transition:border-color .18s ease,box-shadow .18s ease
+}
+.inp:focus, .sel-sm:focus{
+  outline:none;border-color:var(--ac);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 16%,transparent)
+}
+.inp{min-width:190px}
+
+/* KPI GRID */
+.g{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-bottom:14px}
+@media(min-width:740px){.g{grid-template-columns:repeat(3,1fr)}}
+.g .c{margin:0;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.g .c:hover{box-shadow:var(--sh-md);transform:translateY(-2px);border-color:color-mix(in srgb,var(--ac) 35%,var(--bd))}
+.k-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.k small{color:var(--mut);font-size:12px;font-weight:500}
+.k b{display:block;font-size:25px;font-weight:700;margin:6px 0 3px;letter-spacing:-0.025em}
+.k-sub{font-size:12px;color:var(--mut)}
+.pos{color:var(--ok)!important}
+.neg{color:var(--bad)!important}
+.wrn{color:var(--warn)!important}
+
+.grid-2{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:840px){.grid-2{grid-template-columns:1.15fr 0.85fr}}
+
+/* BADGES & BUTTONS */
+.bd{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600;background:var(--acs);color:var(--ac)}
+.bd.pe{background:var(--bads);color:var(--bad)}
+.bd.ok{background:var(--oks);color:var(--ok)}
+.bd.wn{background:var(--warns);color:var(--warn)}
+.bd.mei{background:var(--meis);color:var(--mei)}
+
+.alert-list{display:flex;flex-direction:column;gap:8px;max-height:310px;overflow-y:auto;padding-right:2px}
+.alert-item{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sub);
+  transition:transform .18s ease,border-color .18s ease
+}
+.alert-item:hover{transform:translateX(2px);border-color:color-mix(in srgb,var(--ac) 35%,var(--bd))}
+.alert-item.bad{border-left:4px solid var(--bad)}
+.alert-item.warn{border-left:4px solid var(--warn)}
+.alert-item.info{border-left:4px solid var(--ac)}
+.alert-txt b{font-size:13.5px;display:block}
+.alert-txt span{font-size:12.5px;color:var(--mut)}
+
+.mini-btn{
+  white-space:nowrap;border:1px solid var(--bd);background:var(--card);color:var(--tx);
+  padding:6px 11px;border-radius:8px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+  transition:transform .14s cubic-bezier(.34,1.56,.64,1),background-color .16s ease,color .16s ease,border-color .16s ease
+}
+.mini-btn:hover{background:var(--ac);color:var(--onac);border-color:var(--ac);transform:translateY(-1px)}
+.mini-btn:active{transform:scale(0.95)}
+.mini-btn.pri{background:var(--acs);color:var(--ac);border-color:color-mix(in srgb,var(--ac) 35%,transparent)}
+.mini-btn.pri:hover{background:var(--ac);color:var(--onac)}
+.mini-btn.ok-q{background:var(--oks);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.mini-btn.ok-q:hover{background:var(--ok);color:#fff}
+.mini-btn.bad-q{background:var(--bads);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.mini-btn.bad-q:hover{background:var(--bad);color:#fff}
+
+.ftabs{display:flex;gap:6px;flex-wrap:wrap}
+.ftab{
+  border:1px solid var(--bd);background:var(--sub);color:var(--mut);
+  padding:4px 10px;border-radius:99px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;
+  transition:all .18s ease
+}
+.ftab:hover{color:var(--tx);border-color:var(--ac)}
+.ftab.on{background:var(--acs);color:var(--ac);border-color:var(--ac);font-weight:600}
+
+/* TABLES */
+.w{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 8px;text-align:left;border-bottom:1px solid var(--bd);white-space:nowrap}
+th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:0.03em}
+.n{text-align:right}
+.tn td,.tn th{text-align:center}
+.pr{background:color-mix(in srgb,var(--bad) 10%,transparent)}
+.ab{background:color-mix(in srgb,var(--ac) 8%,transparent)}
+.cl{cursor:pointer;transition:background-color .16s ease}
+tbody tr.cl:hover{background:var(--sub)}
+
+@keyframes rowFlash{
+  0%{background-color:color-mix(in srgb,var(--ok) 28%,transparent)}
+  100%{background-color:transparent}
+}
+.row-flash{animation:rowFlash .75s cubic-bezier(.22,1,.36,1)}
+
+/* BARS & GAUGES */
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mut);align-items:center}
+.leg-dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.bar-wrap{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.bar{
+  display:block;height:8px;border-radius:4px;background:var(--ac);min-width:2px;
+  transition:width .55s cubic-bezier(.22,1,.36,1)
+}
+.bar.r{background:var(--bad)}
+.bar.g{background:var(--ok)}
+.bar.w{background:var(--warn)}
+.sr{margin-bottom:13px;padding-bottom:10px;border-bottom:1px dashed var(--bd)}
+.sr:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.sr-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13.5px;font-weight:500}
+.sr small{color:var(--mut);font-weight:400}
+
+/* EMPLOYEE CARDS & EXPANDED FICHA */
+.hd{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.hd-l{display:flex;gap:12px;align-items:center}
+.av{
+  flex:none;width:46px;height:46px;border-radius:12px;
+  background:linear-gradient(135deg,var(--acs),color-mix(in srgb,var(--ac) 22%,var(--acs)));
+  color:var(--ac);display:grid;place-items:center;font-weight:700;font-size:16px
+}
+.team-card-expanded{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid var(--bd);
+  animation:fadeInBg .2s ease forwards;
+}
+dl{margin:0;display:grid;gap:8px}
+dl div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--bd);padding-bottom:6px;font-size:13.5px}
+dl div:last-child{border-bottom:0;padding-bottom:0}
+dt{color:var(--mut)}dd{margin:0;text-align:right;font-weight:500}
+
+.ficha-sec-title{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+  color:var(--ac);margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid var(--bd)
+}
+.ficha-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:820px){.ficha-grid{grid-template-columns:1fr 1fr}}
+
+.dr{
+  display:flex;justify-content:space-between;align-items:center;padding:8px 8px;
+  border-bottom:1px solid var(--bd);border-radius:7px;transition:background-color .16s ease
+}
+.dr:hover{background:var(--sub)}
+.dr:last-child{border-bottom:0}
+
+.att-upload-bar{
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  background:var(--sub);border:1px dashed var(--bd);border-radius:9px;padding:10px;margin-bottom:10px
+}
+.att-item{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--sub);margin-bottom:6px
+}
+.att-item:last-child{margin-bottom:0}
+.att-info{display:flex;flex-direction:column;gap:2px;min-width:160px;flex:1}
+.att-actions{display:flex;gap:5px;flex-wrap:wrap}
+
+.bt{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  flex:1;min-width:150px;padding:11px 16px;border:0;border-radius:9px;
+  background:var(--ac);color:var(--onac);font:inherit;font-weight:600;cursor:pointer;text-align:center;
+  box-shadow:0 3px 10px color-mix(in srgb,var(--ac) 25%,transparent);
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1),filter .16s ease
+}
+.btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.btn:active{transform:scale(0.97)}
+.btn.s{background:var(--acs);color:var(--ac);box-shadow:none}
+.btn.d{background:var(--bads);color:var(--bad);box-shadow:none}
+.btn.ok{background:var(--ok);color:#fff;box-shadow:0 3px 10px color-mix(in srgb,var(--ok) 25%,transparent)}
+
+.note-box{
+  background:var(--sub);border:1px solid var(--bd);border-left:4px solid var(--mei);
+  padding:10px 12px;border-radius:9px;font-size:12.5px;color:var(--mut);margin-top:10px
+}
+
+.cloud-box{
+  background:var(--sub);border:1px solid var(--bd);border-radius:10px;
+  padding:12px;margin-top:10px
+}
+
+/* RADIAL MEI GAUGE */
+.mei-gauge-box{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  margin-top:14px;padding:14px;background:var(--sub);border-radius:10px;border:1px solid var(--bd)
+}
+.ring-wrap{position:relative;width:74px;height:74px;flex:none;display:grid;place-items:center}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-pct{position:absolute;font-size:13px;font-weight:700}
+
+/* MONTHLY REPORT BOX */
+.report-box{
+  border:1.5px solid color-mix(in srgb,var(--ac) 35%,var(--bd));
+  background:var(--card);border-radius:14px;padding:20px;margin-top:14px;
+  box-shadow:var(--sh-md)
+}
+.report-header{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;
+  padding-bottom:14px;border-bottom:2px solid var(--bd);margin-bottom:16px
+}
+.report-kpis{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px
+}
+@media(min-width:740px){.report-kpis{grid-template-columns:repeat(4,1fr)}}
+.rk{
+  background:var(--sub);border:1px solid var(--bd);border-radius:10px;padding:12px
+}
+.rk small{display:block;color:var(--mut);font-size:11.5px;font-weight:500}
+.rk b{display:block;font-size:19px;font-weight:700;margin-top:3px}
+
+/* MODALS */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(9,13,22,0.55);backdrop-filter:blur(4px);z-index:55;
+  display:flex;align-items:center;justify-content:center;padding:14px;
+  animation:fadeInBg .2s ease forwards
+}
+@keyframes fadeInBg{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card);border:1px solid var(--bd);border-radius:14px;
+  width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:20px;
+  box-shadow:var(--sh-lg);
+  animation:springModalIn .28s cubic-bezier(.16,1,.3,1) forwards
+}
+.modal.modal-narrow{max-width:420px}
+.modal.modal-wide{max-width:860px}
+@keyframes springModalIn{
+  from{opacity:0;transform:translateY(14px) scale(0.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.modal h3{margin:0 0 4px;font-size:17px}
+.modal-sec{
+  grid-column:1/-1;font-size:12px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.04em;color:var(--ac);margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)
+}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.fg .full{grid-column:1/-1}
+.fld label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin-bottom:4px}
+.fld input, .fld select{
+  width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;
+  background:var(--sub);color:var(--tx);font:inherit;font-size:13.5px
+}
+
+.admin-email-item{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--sub);margin-bottom:6px;
+}
+
+/* TOAST NOTIFICATIONS */
+#toast-stack{
+  position:fixed;right:16px;bottom:16px;z-index:80;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:340px
+}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:10px;
+  background:var(--card);color:var(--tx);border:1px solid var(--bd);
+  border-left:4px solid var(--ok);border-radius:10px;padding:11px 14px;
+  box-shadow:var(--sh-md);font-size:13px;font-weight:500;
+  animation:toastIn .28s cubic-bezier(.16,1,.3,1) forwards
+}
+.toast.warn{border-left-color:var(--warn)}
+@keyframes toastIn{
+  from{opacity:0;transform:translateY(12px) scale(0.95)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+.print-only{display:none}
+.sg{display:flex;gap:24px;margin-top:36px}
+.sg span{flex:1;border-top:1px solid var(--tx);padding-top:5px;text-align:center;font-size:12px}
+
+@media print{
+  .top,.app-sidebar,.sidebar-backdrop,.bt,.toolbar,.emp-nav-card,.month-strip,.no-print,select,body::before,.modal-bg,#toast-stack,#app-splash,.att-upload-bar,.att-actions{display:none!important}
+  .print-only{display:block!important}
+  body{background:#fff!important;color:#000!important;font-size:12.5px}
+  main{max-width:100%;padding:0}
+  .c,.report-box{background:#fff!important;color:#000!important;border:1px solid #cbd5e1!important;box-shadow:none!important;break-inside:avoid;margin-bottom:10px;padding:12px}
+  .ficha-grid{grid-template-columns:1fr 1fr!important;gap:10px}
+  .ficha-sec-title{color:#0f172a!important;border-bottom:1px solid #94a3b8!important}
+  .bd{border:1px solid #94a3b8!important;background:#f8fafc!important;color:#0f172a!important}
+}
+</style>
+</head>
+<body class="read-only-mode">
+
+<!-- =========================================================
+     SPLASH SCREEN NATIVA (ESTILO APLICATIVO PLAY STORE)
+     ========================================================= -->
+<div id="app-splash" aria-hidden="true">
+  <div></div>
+  <div class="splash-center">
+    <div class="splash-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"></circle>
+        <polyline points="12 7 12 12 15.5 14"></polyline>
+      </svg>
+    </div>
+    <span class="splash-title">PontoRH</span>
+  </div>
+  <div class="splash-bottom">
+    <div class="splash-spinner"></div>
+    <span class="splash-ver">Versão 7.0.0</span>
+  </div>
+</div>
+
+<!-- =========================================================
+     APLICAÇÃO UNIFICADA (ESPECTADOR DIRETO + LOGIN ADMIN)
+     ========================================================= -->
+<div id="app-shell">
+
+  <header class="top">
+    <div class="top-bar">
+      <div class="top-left">
+        <button id="sidebar-toggle-btn" class="menu-toggle-btn" type="button" aria-label="Abrir ou fechar menu lateral" aria-expanded="false" onclick="toggleSidebar()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="brand-center">
+        <div class="app-logo" aria-hidden="true">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <polyline points="12 7 12 12 15.5 14"></polyline>
+          </svg>
+        </div>
+        <b>PontoRH</b>
+        <span id="role-badge" class="bd ok admin-only">Admin</span>
+      </div>
+
+      <div class="top-right">
+        <button type="button" class="admin-access-pill viewer-only" onclick="openAdminLoginModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span>Admin</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="nav-strip">
+      <nav id="nav"></nav>
+    </div>
+  </header>
+
+  <!-- BACKDROP & ABA LATERAL (DRAWER) -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+  <aside id="app-sidebar" class="app-sidebar" aria-label="Menu Lateral PontoRH">
+    <div id="sidebar-sync-card" class="sidebar-sync-card">
+      <svg class="sidebar-cloud-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+      </svg>
+      <div id="save-status" class="sidebar-sync-text">Conectando à Nuvem • Tempo Real...</div>
+    </div>
+
+    <button type="button" class="side-item viewer-only" onclick="closeSidebar();openAdminLoginModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+      <span>Entrar como Administrador</span>
+    </button>
+
+    <button type="button" class="side-item admin-only" onclick="closeSidebar();openManageAdminsModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span>Gerenciar Administradores</span>
+    </button>
+
+    <button type="button" class="side-item admin-only" onclick="closeSidebar();forceSyncNow()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      <span>Sincronizar Agora</span>
+    </button>
+
+    <button type="button" id="btn-install-app" class="side-item" onclick="closeSidebar();triggerInstallApp()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Instalar Aplicativo</span>
+    </button>
+
+    <button type="button" class="side-item" onclick="toggleTheme()">
+      <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/>
+      </svg>
+      <span id="theme-label">Tema (Claro)</span>
+    </button>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-sec-label">Dados &amp; Relatórios</div>
+
+    <label class="side-item import-item admin-only" style="cursor:pointer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span>Importar (.JSON)</span>
+      <input type="file" accept=".json" style="display:none" onchange="closeSidebar();handleSidebarImport(event)">
+    </label>
+
+    <button type="button" class="side-item export-item admin-only" onclick="closeSidebar();downloadBackup()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Exportar (.JSON)</span>
+    </button>
+
+    <button type="button" class="side-item export-item" onclick="closeSidebar();exportCSVForComp(CURRENT_MONTH)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+      </svg>
+      <span>Exportar Planilha (.CSV)</span>
+    </button>
+
+    <button type="button" class="side-item admin-only" onclick="closeSidebar();openBackupModal()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </svg>
+      <span>Backup Avançado</span>
+    </button>
+
+    <div class="sidebar-divider admin-only"></div>
+
+    <button type="button" class="side-item danger admin-only" onclick="closeSidebar();logoutAdmin()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      <span>Sair do Modo Admin</span>
+    </button>
+  </aside>
+
+  <main id="v"></main>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-stack" aria-live="polite"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  initializeAuth,
+  inMemoryPersistence,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+// =========================================================
+// 1. CONFIGURAÇÃO DO FIREBASE & CONTROLE DE ACESSO UNIFICADO
+// =========================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAUGhueUhaTL2QYipgo_uJva3yaZCAbxXI",
+  authDomain: "pontorh-usija.firebaseapp.com",
+  projectId: "pontorh-usija",
+  storageBucket: "pontorh-usija.firebasestorage.app",
+  messagingSenderId: "376051277351",
+  appId: "1:376051277351:web:2927a59785442e3d32f802"
+};
+
+const MASTER_ADMIN_EMAIL = "sacalao660@gmail.com";
+let AUTHORIZED_ADMINS = [MASTER_ADMIN_EMAIL];
+
+const firebaseApp = initializeApp(firebaseConfig);
+let firebaseAuth = null;
+try {
+  firebaseAuth = initializeAuth(firebaseApp, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence]
+  });
+} catch (_) {
+  try {
+    firebaseAuth = initializeAuth(firebaseApp, { persistence: inMemoryPersistence });
+  } catch (__) {}
+}
+const db = getFirestore(firebaseApp);
+
+const CLIENT_ID = "cli_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now().toString(36);
+const UNIFIED_STORAGE_KEY = "pontoRH_unified_v7_data";
+const ADMIN_SESSION_KEY = "pontoRH_admin_session_v7";
+const UI_NAV_STATE_KEY = "pontoRH_nav_state_v7";
+const LEGACY_KEYS = ["pontoRH_v6_data", "pontoRH_v5_mei_data", "pontoRH_v4_mei_data"];
+const MEI_ANNUAL_LIMIT = 81000;
+
+let IS_ADMIN = false;
+let IS_READ_ONLY = true;
+let LOGGED_ADMIN_EMAIL = "";
+let CLOUD_INITIALIZED = false;
+
+// =========================================================
+// SPLASH SCREEN & SERVICE WORKER PWA
+// =========================================================
+function hideSplashScreen() {
+  const splash = document.getElementById("app-splash");
+  if (splash && !splash.classList.contains("hide")) {
+    splash.classList.add("hide");
+    setTimeout(() => splash.remove(), 420);
+  }
+}
+
+if ("serviceWorker" in navigator && (window.location.protocol === "https:" || window.location.hostname === "localhost")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById("btn-install-app");
+  if (btn) {
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Instalar App Agora</span>`;
+  }
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  MotionFX.toast("PontoRH instalado como aplicativo!");
+});
+
+// =========================================================
+// CONTROLE DA ABA LATERAL & MODO DE ACESSO
+// =========================================================
+function toggleSidebar() {
+  const open = document.body.classList.toggle("sidebar-open");
+  const btn = document.getElementById("sidebar-toggle-btn");
+  if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function closeSidebar() {
+  document.body.classList.remove("sidebar-open");
+  const btn = document.getElementById("sidebar-toggle-btn");
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function isEmailAuthorizedAdmin(email) {
+  const clean = String(email || "").trim().toLowerCase();
+  if (!clean) return false;
+  return clean === MASTER_ADMIN_EMAIL || AUTHORIZED_ADMINS.includes(clean);
+}
+
+function setAccessMode({ isAdmin, email = "" }) {
+  IS_ADMIN = !!isAdmin;
+  IS_READ_ONLY = !IS_ADMIN;
+  LOGGED_ADMIN_EMAIL = IS_ADMIN ? String(email || "").trim().toLowerCase() : "";
+
+  if (IS_ADMIN) {
+    document.body.classList.remove("read-only-mode");
+    document.body.classList.add("admin-mode");
+    try {
+      localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ email: LOGGED_ADMIN_EMAIL, at: Date.now() }));
+    } catch (_) {}
+  } else {
+    document.body.classList.remove("admin-mode");
+    document.body.classList.add("read-only-mode");
+    try { localStorage.removeItem(ADMIN_SESSION_KEY); } catch (_) {}
+  }
+  updateHeaderSyncUI();
+}
+
+function saveNavState() {
+  try {
+    localStorage.setItem(UI_NAV_STATE_KEY, JSON.stringify({ V, E, PAST_COMP }));
+  } catch (_) {}
+}
+
+function loadNavState() {
+  try {
+    const raw = localStorage.getItem(UI_NAV_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// =========================================================
+// MODAL DE LOGIN ADMINISTRATIVO & GERENCIAR ADMINISTRADORES
+// =========================================================
+function openAdminLoginModal() {
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal modal-narrow" style="text-align:center">
+      <div class="app-logo" style="width:48px;height:48px;border-radius:13px;margin:0 auto 12px">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h3>Acesso Administrativo</h3>
+      <p class="m">Entre com uma conta autorizada para editar fichas, lançar horas e anexar documentos.</p>
+      <form style="display:flex;flex-direction:column;gap:10px;text-align:left;margin-top:14px" onsubmit="event.preventDefault();loginWithEmailForm();">
+        <div class="fld">
+          <label>E-mail do Administrador</label>
+          <input id="login-email" type="email" placeholder="seuemail@dominio.com" autocomplete="email" required>
+        </div>
+        <div class="fld">
+          <label>Senha</label>
+          <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <div id="login-modal-err" style="display:none;padding:9px 11px;border-radius:8px;background:var(--bads);color:var(--bad);font-size:12.5px;font-weight:500"></div>
+        <div class="bt" style="margin-top:8px">
+          <button type="submit" id="login-submit-btn" class="btn">Entrar como Admin</button>
+          <button type="button" class="btn s" onclick="closeModal()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+  setTimeout(() => document.getElementById("login-email")?.focus(), 60);
+}
+
+async function loginWithEmailForm() {
+  if (!firebaseAuth) return;
+  const email = (document.getElementById("login-email")?.value || "").trim().toLowerCase();
+  const pass = document.getElementById("login-pass")?.value || "";
+  const errBox = document.getElementById("login-modal-err");
+  const btn = document.getElementById("login-submit-btn");
+
+  const showErr = (msg) => {
+    if (!errBox) return;
+    errBox.textContent = msg;
+    errBox.style.display = "block";
+  };
+
+  if (!email || !pass) return;
+  if (!isEmailAuthorizedAdmin(email)) {
+    showErr(`O e-mail "${email}" não está na lista de administradores autorizados.`);
+    return;
+  }
+
+  if (errBox) errBox.style.display = "none";
+  if (btn) { btn.disabled = true; btn.textContent = "Entrando..."; }
+
+  try {
+    await signInWithEmailAndPassword(firebaseAuth, email, pass);
+    setAccessMode({ isAdmin: true, email });
+    closeModal();
+    go({ animate: false });
+    MotionFX.toast("Modo Administrador ativado!");
+  } catch (err) {
+    const code = err?.code || "";
+    let msg = "Não foi possível entrar. Verifique e-mail e senha.";
+    if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+      msg = "E-mail ou senha incorretos.";
+    } else if (code === "auth/too-many-requests") {
+      msg = "Muitas tentativas. Aguarde alguns instantes.";
+    } else if (code === "auth/network-request-failed") {
+      msg = "Sem conexão com a internet.";
+    }
+    showErr(msg);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Entrar como Admin"; }
+  }
+}
+
+async function logoutAdmin() {
+  setAccessMode({ isAdmin: false });
+  if (firebaseAuth) {
+    try { await signOut(firebaseAuth); } catch (_) {}
+  }
+  go({ animate: false });
+  MotionFX.toast("Você voltou ao modo Espectador (somente leitura).", "warn");
+}
+
+function openManageAdminsModal() {
+  if (!IS_ADMIN) return;
+  const list = Array.from(new Set([MASTER_ADMIN_EMAIL, ...AUTHORIZED_ADMINS]));
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="c-hd" style="margin-bottom:4px">
+        <h3>Gerenciar Administradores</h3>
+        <span class="bd ok">${list.length} autorizado(s)</span>
+      </div>
+      <p class="m">Adicione os e-mails que terão permissão de administrador no PontoRH. Lembre-se de também criar a senha de cada novo e-mail em <strong>Authentication &gt; Users</strong> no Firebase Console.</p>
+
+      <div style="display:flex;gap:8px;margin:12px 0">
+        <input id="new-admin-email" class="inp" style="flex:1" type="email" placeholder="novo.admin@email.com">
+        <button type="button" class="mini-btn ok-q" onclick="addAdminEmail()">+ Adicionar</button>
+      </div>
+
+      <div style="margin-top:10px">
+        ${list.map(em => `
+          <div class="admin-email-item">
+            <div>
+              <strong style="font-size:13.5px">${escHtml(em)}</strong>
+              ${em === MASTER_ADMIN_EMAIL ? `<span class="bd ok" style="margin-left:6px">Principal</span>` : `<span class="bd" style="margin-left:6px">Admin</span>`}
+            </div>
+            ${em !== MASTER_ADMIN_EMAIL
+              ? `<button type="button" class="mini-btn bad-q" onclick="removeAdminEmail('${escHtml(em)}')">Remover</button>`
+              : `<span style="font-size:11.5px;color:var(--mut)">Protegido</span>`
+            }
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="bt" style="margin-top:16px">
+        <button type="button" class="btn s" onclick="closeModal()">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function addAdminEmail() {
+  if (!IS_ADMIN) return;
+  const inp = document.getElementById("new-admin-email");
+  const email = String(inp?.value || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) {
+    alert("Digite um e-mail válido.");
+    return;
+  }
+  const nextList = Array.from(new Set([MASTER_ADMIN_EMAIL, ...AUTHORIZED_ADMINS, email]));
+  AUTHORIZED_ADMINS = nextList;
+  try {
+    await setDoc(doc(db, "pontorh_config", "geral"), {
+      admins: nextList,
+      updatedAt: Date.now(),
+      updatedBy: CLIENT_ID
+    }, { merge: true });
+    openManageAdminsModal();
+    MotionFX.toast(`Administrador ${email} adicionado!`);
+  } catch (err) {
+    alert("Erro ao salvar no Firestore. Verifique as regras de segurança.");
+  }
+}
+
+async function removeAdminEmail(email) {
+  if (!IS_ADMIN || email === MASTER_ADMIN_EMAIL) return;
+  if (!confirm(`Remover permissão de administrador de ${email}?`)) return;
+  const nextList = AUTHORIZED_ADMINS.filter(e => e !== email);
+  if (!nextList.includes(MASTER_ADMIN_EMAIL)) nextList.unshift(MASTER_ADMIN_EMAIL);
+  AUTHORIZED_ADMINS = nextList;
+  try {
+    await setDoc(doc(db, "pontorh_config", "geral"), {
+      admins: nextList,
+      updatedAt: Date.now(),
+      updatedBy: CLIENT_ID
+    }, { merge: true });
+    openManageAdminsModal();
+    MotionFX.toast(`Administrador ${email} removido.`, "warn");
+  } catch (err) {
+    alert("Erro ao atualizar no Firestore.");
+  }
+}
+
+// =========================================================
+// 2. CAMADA DE PERSISTÊNCIA UNIFICADA (SEM LIMITE DE 1 MB POR SALA!)
+// =========================================================
+const SYNC_META = {
+  cloudStatus: "connecting",
+  cloudError: "",
+  lastSyncTime: null
+};
+
+function updateHeaderSyncUI() {
+  const card = document.getElementById("sidebar-sync-card");
+  const txt = document.getElementById("save-status");
+  if (!txt) return;
+
+  const roleTxt = IS_ADMIN ? "Modo Admin" : "Modo Espectador";
+  if (SYNC_META.cloudStatus === "synced") {
+    if (card) card.className = "sidebar-sync-card";
+    txt.textContent = `Sistema Unificado Online • Tempo Real (${roleTxt})`;
+  } else if (SYNC_META.cloudStatus === "syncing") {
+    if (card) card.className = "sidebar-sync-card syncing";
+    txt.textContent = `Sincronizando alterações na nuvem...`;
+  } else if (SYNC_META.cloudStatus === "error") {
+    if (card) card.className = "sidebar-sync-card err";
+    txt.textContent = `Atenção Nuvem: ${SYNC_META.cloudError || "Verificar Regras"}`;
+  } else {
+    if (card) card.className = "sidebar-sync-card syncing";
+    txt.textContent = `Conectando ao banco em tempo real...`;
+  }
+}
+
+// =========================================================
+// 3. DADOS, FÁBRICA ISOLADA DE FICHAS & REGRAS DE NEGÓCIO
+// =========================================================
+function getCurrentMonthCode() {
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  return `${yr}-${mo}`;
+}
+
+const CURRENT_MONTH = getCurrentMonthCode();
+
+function generateEmpUid() {
+  return "emp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function createIsolatedEmployee(overrides = {}, existingEmployees = []) {
+  const numericIds = (existingEmployees || []).map(x => Number(x.id) || 0);
+  const nextId = overrides.id != null ? overrides.id : (Math.max(0, ...numericIds) + 1);
+  return {
+    id: nextId,
+    uid: overrides.uid || generateEmpUid(),
+    n: String(overrides.n || ""),
+    regime: overrides.regime || "MEI",
+    cnpjMei: String(overrides.cnpjMei || ""),
+    banco: String(overrides.banco || ""),
+    pix: String(overrides.pix || ""),
+    s: String(overrides.s || "Administrativo"),
+    c: String(overrides.c || ""),
+    ad: String(overrides.ad || new Date().toISOString().slice(0, 10)),
+    sal: overrides.sal != null ? Number(overrides.sal) : 1800,
+    jornada: String(overrides.jornada || "44h semanais (Seg a Sex)"),
+    horaEntrada: String(overrides.horaEntrada || "08:00"),
+    horaSaida: String(overrides.horaSaida || "17:00"),
+    fatorHe: overrides.fatorHe != null ? Number(overrides.fatorHe) : 1.0,
+    ajudaCusto: overrides.ajudaCusto != null ? Number(overrides.ajudaCusto) : 0,
+    acumAnual: overrides.acumAnual != null ? Number(overrides.acumAnual) : 0,
+    cpf: String(overrides.cpf || ""),
+    rg: String(overrides.rg || ""),
+    cnh: String(overrides.cnh || ""),
+    cnhCat: String(overrides.cnhCat || ""),
+    nasc: String(overrides.nasc || ""),
+    nacionalidade: String(overrides.nacionalidade || "Brasileira"),
+    naturalidade: String(overrides.naturalidade || "Rio de Janeiro"),
+    estadoCivil: String(overrides.estadoCivil || "Solteiro(a)"),
+    tel: String(overrides.tel || ""),
+    email: String(overrides.email || ""),
+    endereco: String(overrides.endereco || ""),
+    numero: String(overrides.numero || ""),
+    complemento: String(overrides.complemento || ""),
+    bairro: String(overrides.bairro || ""),
+    cidade: String(overrides.cidade || "Rio de Janeiro"),
+    uf: String(overrides.uf || "RJ"),
+    cep: String(overrides.cep || ""),
+    emergNome: String(overrides.emergNome || ""),
+    emergParentesco: String(overrides.emergParentesco || ""),
+    emergTel: String(overrides.emergTel || ""),
+    dep: overrides.dep != null ? Number(overrides.dep) : 0,
+    vt: overrides.vt != null ? Number(overrides.vt) : 0,
+    status: String(overrides.status || "Ativo"),
+    docs: Array.isArray(overrides.docs) ? [...overrides.docs] : [false, false, false, false, false],
+    attachments: Array.isArray(overrides.attachments)
+      ? overrides.attachments.map(att => ({ ...att }))
+      : []
+  };
+}
+
+const INITIAL_EMP = [
+  {
+    id:1, uid:"emp_init_1", n:"Alessandro da Silva Brito", regime:"MEI",
+    cnpjMei:"42.819.304/0001-12", banco:"Nubank", pix:"alessandro.brito@pix.com.br",
+    s:"Administrativo", c:"Assistente Administrativo", ad:"2023-03-06", sal:3200,
+    jornada:"40h semanais (Seg a Sex)", horaEntrada:"08:00", horaSaida:"17:00",
+    fatorHe:1.0, ajudaCusto:250, acumAnual:35200,
+    cpf:"***.482.117-**", rg:"24.819.102-4", cnh:"", cnhCat:"",
+    nasc:"1994-08-12", nacionalidade:"Brasileira", naturalidade:"Rio de Janeiro", estadoCivil:"Casado",
+    tel:"(21) 98877-1042", email:"alessandro.brito@email.com",
+    endereco:"Rua Uranos", numero:"1140", complemento:"Apto 202", bairro:"Ramos", cidade:"Rio de Janeiro", uf:"RJ", cep:"21060-070",
+    emergNome:"Mariana Brito", emergParentesco:"Esposa", emergTel:"(21) 98877-9910",
+    dep:1, vt:0, status:"Ativo"
+  },
+  {
+    id:2, uid:"emp_init_2", n:"Dandara Claudiane de Araujo Falcão", regime:"MEI",
+    cnpjMei:"38.512.940/0001-55", banco:"Inter", pix:"(21) 98061-8738",
+    s:"Administrativo", c:"Aux. Administrativo", ad:"2026-11-16", sal:1800,
+    jornada:"44h semanais (Seg a Sex)", horaEntrada:"07:30", horaSaida:"17:18",
+    fatorHe:1.0, ajudaCusto:300, acumAnual:47300,
+    cpf:"157.941.007-37", rg:"28.582.300-1", cnh:"", cnhCat:"",
+    nasc:"1998-01-02", nacionalidade:"Brasileira", naturalidade:"Rio de Janeiro", estadoCivil:"Solteira",
+    tel:"(21) 98061-8738", email:"dandarafalcao773@gmail.com",
+    endereco:"Rua José Maria", numero:"232", complemento:"Casa", bairro:"Penha", cidade:"Rio de Janeiro", uf:"RJ", cep:"21070-140",
+    emergNome:"Felipe", emergParentesco:"Esposo", emergTel:"(21) 97704-6445",
+    dep:0, vt:0, status:"Ativo"
+  },
+  {
+    id:3, uid:"emp_init_3", n:"Cauã Oliveira Dias", regime:"MEI",
+    cnpjMei:"51.204.778/0001-09", banco:"Itaú", pix:"(21) 99123-4410",
+    s:"Operações / Logística", c:"Auxiliar de Logística", ad:"2026-09-15", sal:2400,
+    jornada:"44h semanais (Seg a Sex)", horaEntrada:"08:00", horaSaida:"17:00",
+    fatorHe:1.5, ajudaCusto:220, acumAnual:7200,
+    cpf:"***.730.592-**", rg:"29.410.883-2", cnh:"06841920311", cnhCat:"AB",
+    nasc:"2000-11-03", nacionalidade:"Brasileira", naturalidade:"Duque de Caxias", estadoCivil:"Solteiro",
+    tel:"(21) 99123-4410", email:"caua.dias@email.com",
+    endereco:"Av. Brasil", numero:"4520", complemento:"Fundos", bairro:"Bonsucesso", cidade:"Rio de Janeiro", uf:"RJ", cep:"21040-361",
+    emergNome:"Sônia Oliveira", emergParentesco:"Mãe", emergTel:"(21) 99123-1109",
+    dep:0, vt:0, status:"Ativo"
+  },
+  {
+    id:4, uid:"emp_init_4", n:"Davi Moraes Vieira da Silva", regime:"MEI",
+    cnpjMei:"47.903.112/0001-80", banco:"Bradesco", pix:"davi.moraes@email.com",
+    s:"Operações / Logística", c:"Conferente Operacional", ad:"2023-09-04", sal:2600,
+    jornada:"44h semanais (Seg a Sex)", horaEntrada:"08:00", horaSaida:"17:00",
+    fatorHe:1.5, ajudaCusto:220, acumAnual:28600,
+    cpf:"***.348.661-**", rg:"26.114.902-8", cnh:"05129384710", cnhCat:"B",
+    nasc:"1997-05-19", nacionalidade:"Brasileira", naturalidade:"Rio de Janeiro", estadoCivil:"Casado",
+    tel:"(21) 98342-7765", email:"davi.moraes@email.com",
+    endereco:"Rua Cardoso de Morais", numero:"410", complemento:"Bloco B", bairro:"Bonsucesso", cidade:"Rio de Janeiro", uf:"RJ", cep:"21032-000",
+    emergNome:"Camila Silva", emergParentesco:"Esposa", emergTel:"(21) 98342-0011",
+    dep:1, vt:0, status:"Ativo"
+  },
+  {
+    id:5, uid:"emp_init_5", n:"João Carlos Carvalho Motta", regime:"MEI",
+    cnpjMei:"35.640.889/0001-41", banco:"Santander", pix:"(21) 97781-0098",
+    s:"Operações / Logística", c:"Operador Logístico", ad:"2022-11-21", sal:2900,
+    jornada:"44h semanais (Seg a Sex)", horaEntrada:"08:00", horaSaida:"17:00",
+    fatorHe:1.5, ajudaCusto:220, acumAnual:31900,
+    cpf:"***.906.273-**", rg:"21.773.409-5", cnh:"04192837465", cnhCat:"AD",
+    nasc:"1991-09-08", nacionalidade:"Brasileira", naturalidade:"Niterói", estadoCivil:"Casado",
+    tel:"(21) 97781-0098", email:"joaocarlos.motta@email.com",
+    endereco:"Rua Teixeira de Castro", numero:"189", complemento:"Casa 1", bairro:"Bonsucesso", cidade:"Rio de Janeiro", uf:"RJ", cep:"21040-112",
+    emergNome:"Renata Motta", emergParentesco:"Esposa", emergTel:"(21) 97781-5540",
+    dep:2, vt:0, status:"Ativo"
+  },
+  {
+    id:6, uid:"emp_init_6", n:"Jose Carlos Moraes Vieira da Silva", regime:"MEI",
+    cnpjMei:"49.118.502/0001-63", banco:"Caixa", pix:"josecarlos.m@email.com",
+    s:"Operações / Logística", c:"Auxiliar de Expedição", ad:"2024-05-06", sal:2500,
+    jornada:"44h semanais (Seg a Sex)", horaEntrada:"08:00", horaSaida:"17:00",
+    fatorHe:1.5, ajudaCusto:220, acumAnual:27500,
+    cpf:"***.157.438-**", rg:"25.880.124-9", cnh:"", cnhCat:"",
+    nasc:"1996-12-14", nacionalidade:"Brasileira", naturalidade:"Rio de Janeiro", estadoCivil:"Solteiro",
+    tel:"(21) 98560-2217", email:"josecarlos.m@email.com",
+    endereco:"Rua Nova Jerusalém", numero:"88", complemento:"Casa", bairro:"Bonsucesso", cidade:"Rio de Janeiro", uf:"RJ", cep:"21042-235",
+    emergNome:"Davi Moraes", emergParentesco:"Irmão", emergTel:"(21) 98342-7765",
+    dep:0, vt:0, status:"Ativo"
+  },
+  {
+    id:7, uid:"emp_init_7", n:"Paula Ribeiro Nunes", regime:"MEI",
+    cnpjMei:"53.772.190/0001-27", banco:"Nubank", pix:"(21) 99478-5503",
+    s:"Comercial", c:"Consultora Comercial", ad:"2025-02-03", sal:3500,
+    jornada:"40h semanais (Seg a Sex)", horaEntrada:"08:30", horaSaida:"17:30",
+    fatorHe:1.0, ajudaCusto:250, acumAnual:38500,
+    cpf:"***.624.915-**", rg:"23.904.511-0", cnh:"05918273645", cnhCat:"B",
+    nasc:"1993-04-30", nacionalidade:"Brasileira", naturalidade:"Rio de Janeiro", estadoCivil:"Divorciada",
+    tel:"(21) 99478-5503", email:"paula.nunes@email.com",
+    endereco:"Rua Conde de Agrolongo", numero:"620", complemento:"Apto 301", bairro:"Penha", cidade:"Rio de Janeiro", uf:"RJ", cep:"21020-190",
+    emergNome:"Luciana Ribeiro", emergParentesco:"Irmã", emergTel:"(21) 99478-1122",
+    dep:1, vt:0, status:"Ativo"
+  },
+  {
+    id:8, uid:"emp_init_8", n:"Tiago Barros Freitas", regime:"MEI",
+    cnpjMei:"44.309.615/0001-94", banco:"Inter", pix:"tiago.suporte@email.com",
+    s:"TI / Suporte", c:"Analista de Suporte", ad:"2023-06-12", sal:3800,
+    jornada:"40h semanais (Seg a Sex)", horaEntrada:"09:00", horaSaida:"18:00",
+    fatorHe:1.0, ajudaCusto:250, acumAnual:41800,
+    cpf:"***.481.059-**", rg:"27.319.654-7", cnh:"06291847502", cnhCat:"B",
+    nasc:"1995-07-22", nacionalidade:"Brasileira", naturalidade:"Nova Iguaçu", estadoCivil:"Solteiro",
+    tel:"(21) 98215-6694", email:"tiago.suporte@email.com",
+    endereco:"Rua Leopoldina Rego", numero:"515", complemento:"Sala 402", bairro:"Olaria", cidade:"Rio de Janeiro", uf:"RJ", cep:"21021-522",
+    emergNome:"Roberto Freitas", emergParentesco:"Pai", emergTel:"(21) 98215-0044",
+    dep:0, vt:0, status:"Ativo"
+  }
+];
+
+const DOC_MEI = [
+  "Contrato de Prestação de Serviços (PJ)",
+  "Cartão CNPJ (CCMEI Ativo)",
+  "Certidão Negativa (CND Federal/DAS)",
+  "Documento com Foto (RG / CNH)",
+  "Comprovante Bancário / Chave PIX"
+];
+
+const DOC_CLT = [
+  "Contrato de trabalho",
+  "ASO admissional",
+  "CTPS digital",
+  "RG e CPF",
+  "Comprovante de residência"
+];
+
+const ATTACHMENT_DOC_TYPES = [
+  "RG",
+  "CPF",
+  "CNH",
+  "Comprovante de Residência",
+  "CCMEI / Contrato",
+  "Certidão Negativa (CND / DAS)",
+  "ASO",
+  "CTPS Digital",
+  "Certificado",
+  "Comprovante Bancário / PIX",
+  "Outro Documento"
+];
+
+const DS = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const NOMES_MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
+
+const INSS = [[1518,.075],[2793.88,.09],[4190.83,.12],[8157.41,.14]];
+const IR = [[2259.2,0,0],[2826.65,.075,169.44],[3751.05,.15,381.44],[4664.68,.225,662.77],[1e9,.275,896]];
+
+const $ = s => document.querySelector(s);
+const $$all = s => Array.from(document.querySelectorAll(s));
+const R = s => () => (s = s * 16807 % 2147483647) / 2147483647;
+const hm = m => (m < 0 ? "-" : "") + Math.floor(Math.abs(m) / 60) + ":" + String(Math.abs(m) % 60).padStart(2, "0");
+const tm = m => m == null ? "—" : String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const toMin = str => {
+  if (!str) return null;
+  const [h, m] = str.split(":").map(Number);
+  return (isNaN(h) || isNaN(m)) ? null : h * 60 + m;
+};
+const $$ = v => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const dt = s => s ? s.split("-").reverse().join("/") : "—";
+const iniFromName = nameStr => {
+  const clean = String(nameStr || "").trim();
+  if (!clean) return "??";
+  return clean.split(/\s+/).map(x => x[0]).slice(0, 2).join("").toUpperCase();
+};
+const ini = f => iniFromName(f?.n);
+const escHtml = str => String(str ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
+
+// =========================================================
+// MOTION & CHOREOGRAPHY ENGINE
+// =========================================================
+const MotionFX = {
+  toast(msg, type = "ok") {
+    const stack = $("#toast-stack");
+    if (!stack) return;
+    const el = document.createElement("div");
+    el.className = `toast ${type}`;
+    const icon = type === "warn"
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    el.innerHTML = `${icon}<span>${msg}</span>`;
+    stack.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = "opacity .25s ease, transform .25s ease";
+      el.style.opacity = "0";
+      el.style.transform = "translateY(8px) scale(0.96)";
+      setTimeout(() => el.remove(), 260);
+    }, 2800);
+  },
+
+  staggerCards(selector = "main .g .c, main > .c, main .grid-2 > .c, main .ficha-grid > .c") {
+    const els = $$all(selector);
+    if (!els.length) return;
+    if (window.anime) {
+      window.anime({
+        targets: els,
+        opacity: [0, 1],
+        translateY: [10, 0],
+        duration: 320,
+        delay: window.anime.stagger(30),
+        easing: "easeOutCubic"
+      });
+    } else {
+      els.forEach((el, i) => {
+        el.animate(
+          [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "translateY(0)" }],
+          { duration: 280, delay: Math.min(i * 25, 200), easing: "cubic-bezier(.22,1,.36,1)", fill: "both" }
+        );
+      });
+    }
+  },
+
+  countNumbers() {
+    $$all("[data-count]").forEach(el => {
+      const target = parseFloat(el.getAttribute("data-count"));
+      const fmt = el.getAttribute("data-fmt") || "int";
+      if (isNaN(target)) return;
+      const startTime = performance.now();
+      const duration = 400;
+      const step = now => {
+        const p = Math.min(1, (now - startTime) / duration);
+        const ease = 1 - Math.pow(1 - p, 3);
+        const cur = target * ease;
+        if (fmt === "brl") el.textContent = $$(cur);
+        else if (fmt === "hm") el.textContent = hm(Math.round(cur));
+        else if (fmt === "shm") {
+          const v = Math.round(cur);
+          el.textContent = (v > 0 ? "+" : "") + hm(v);
+        } else el.textContent = Math.round(cur);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  },
+
+  updateNavInk() {
+    const nav = $("#nav");
+    const activeBtn = nav?.querySelector("button.on");
+    let ink = nav?.querySelector(".nav-ink");
+    if (!nav || !activeBtn) return;
+    if (!ink) {
+      ink = document.createElement("span");
+      ink.className = "nav-ink";
+      nav.appendChild(ink);
+    }
+    ink.style.width = activeBtn.offsetWidth + "px";
+    ink.style.transform = `translateX(${activeBtn.offsetLeft}px)`;
+  },
+
+  flashRows(selector) {
+    requestAnimationFrame(() => {
+      $$all(selector).forEach((el, i) => {
+        setTimeout(() => {
+          el.classList.remove("row-flash");
+          void el.offsetWidth;
+          el.classList.add("row-flash");
+        }, i * 22);
+      });
+    });
+  }
+};
+
+function formatMonthLabel(comp) {
+  const [yr, mo] = comp.split("-").map(Number);
+  const nome = NOMES_MESES[(mo || 1) - 1] || "Mês";
+  return `${nome} de ${yr}`;
+}
+
+function isHoliday(comp, d) {
+  const [, mo] = comp.split("-").map(Number);
+  if (mo === 1 && d === 1) return "Feriado (Confraternização)";
+  if (mo === 4 && d === 21) return "Feriado (Tiradentes)";
+  if (mo === 5 && d === 1) return "Feriado (Dia do Trabalho)";
+  if (mo === 9 && d === 7) return "Feriado (Independência)";
+  if (mo === 10 && d === 12) return "Feriado (N. Sra. Aparecida)";
+  if (mo === 11 && d === 2) return "Feriado (Finados)";
+  if (mo === 11 && d === 15) return "Feriado (Proclamação República)";
+  if (mo === 11 && d === 20) return "Feriado (Consciência Negra)";
+  if (mo === 12 && d === 25) return "Feriado (Natal)";
+  return null;
+}
+
+function generateMonthRows(empId, comp, isDemoSeed = false) {
+  const [yr, mo] = comp.split("-").map(Number);
+  const daysInMonth = new Date(yr, mo, 0).getDate();
+  const maxDay = isDemoSeed ? ((comp === CURRENT_MONTH) ? 17 : daysInMonth) : 0;
+  const numSeed = typeof empId === "number" ? empId : Array.from(String(empId)).reduce((a, c) => a + c.charCodeAt(0), 0);
+  const r = R(numSeed * 977 + mo * 31 + 13);
+  const rows = [];
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const w = new Date(yr, mo - 1, d).getDay();
+    const hol = isHoliday(comp, d);
+    const row = { d, w, obs: "" };
+
+    if (w === 0 || w === 6) {
+      row.t = "Folga";
+    } else if (hol) {
+      row.t = hol;
+    } else if (d > maxDay) {
+      row.t = "—";
+    } else {
+      const e = 480 + Math.round(r() * 17 - 5);
+      const a = 720 + Math.round(r() * 10 - 4);
+      const v = a + 60 + Math.round(r() * 8);
+      const s = 1020 + Math.round(r() * 52 - 10);
+      const miss = r() < 0.05;
+      row.p = [e, a, v, miss ? null : s];
+      row.t = miss ? "Pendente" : "Normal";
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function normalizeStateShape(parsed) {
+  if (!parsed || !Array.isArray(parsed.employees) || !parsed.points) return null;
+  const seenIds = new Set();
+  parsed.employees = parsed.employees.map((emp, idx) => {
+    let empId = emp.id != null ? emp.id : (idx + 1);
+    while (seenIds.has(String(empId))) {
+      empId = Number(empId) + 1 || (idx + 100);
+    }
+    seenIds.add(String(empId));
+
+    return {
+      id: empId,
+      uid: emp.uid || generateEmpUid(),
+      n: emp.n ?? "",
+      regime: emp.regime || "MEI",
+      cnpjMei: emp.cnpjMei ?? "",
+      banco: emp.banco ?? "",
+      pix: emp.pix ?? "",
+      s: emp.s ?? "Administrativo",
+      c: emp.c ?? "",
+      ad: emp.ad ?? "",
+      sal: emp.sal != null ? Number(emp.sal) : 1800,
+      jornada: emp.jornada ?? "44h semanais (Seg a Sex)",
+      horaEntrada: emp.horaEntrada ?? "08:00",
+      horaSaida: emp.horaSaida ?? "17:00",
+      fatorHe: emp.fatorHe != null ? Number(emp.fatorHe) : 1.0,
+      ajudaCusto: emp.ajudaCusto != null ? Number(emp.ajudaCusto) : 0,
+      acumAnual: emp.acumAnual != null ? Number(emp.acumAnual) : 0,
+      cpf: emp.cpf ?? "",
+      rg: emp.rg ?? "",
+      cnh: emp.cnh ?? "",
+      cnhCat: emp.cnhCat ?? "",
+      nasc: emp.nasc ?? "",
+      nacionalidade: emp.nacionalidade ?? "Brasileira",
+      naturalidade: emp.naturalidade ?? "Rio de Janeiro",
+      estadoCivil: emp.estadoCivil ?? "Solteiro(a)",
+      tel: emp.tel ?? "",
+      email: emp.email ?? "",
+      endereco: emp.endereco ?? "",
+      numero: emp.numero ?? "",
+      complemento: emp.complemento ?? "",
+      bairro: emp.bairro ?? "",
+      cidade: emp.cidade ?? "Rio de Janeiro",
+      uf: emp.uf ?? "RJ",
+      cep: emp.cep ?? "",
+      emergNome: emp.emergNome ?? "",
+      emergParentesco: emp.emergParentesco ?? "",
+      emergTel: emp.emergTel ?? "",
+      dep: emp.dep != null ? Number(emp.dep) : 0,
+      vt: emp.vt != null ? Number(emp.vt) : 0,
+      status: emp.status ?? "Ativo",
+      docs: Array.isArray(emp.docs) ? [...emp.docs] : [false, false, false, false, false],
+      attachments: Array.isArray(emp.attachments)
+        ? emp.attachments.map(att => ({ ...att }))
+        : []
+    };
+  });
+  if (!parsed.updatedAt) parsed.updatedAt = Date.now();
+  return parsed;
+}
+
+function createDefaultState() {
+  const employees = INITIAL_EMP.map((emp, idx) =>
+    createIsolatedEmployee({
+      ...emp,
+      docs: [true, true, emp.id % 4 !== 0, true, true],
+      attachments: []
+    }, INITIAL_EMP.slice(0, idx))
+  );
+  const seedMonths = ["2026-09", "2026-10", CURRENT_MONTH];
+  const points = {};
+  seedMonths.forEach(comp => {
+    points[comp] = {};
+    employees.forEach(emp => {
+      points[comp][emp.id] = generateMonthRows(emp.id, comp, true);
+    });
+  });
+  return { employees, points, updatedAt: 1 };
+}
+
+function loadLocalCache() {
+  try {
+    let raw = localStorage.getItem(UNIFIED_STORAGE_KEY);
+    if (!raw) {
+      for (const k of LEGACY_KEYS) {
+        raw = localStorage.getItem(k);
+        if (raw) break;
+      }
+    }
+    if (raw) {
+      const normalized = normalizeStateShape(JSON.parse(raw));
+      if (normalized) return normalized;
+    }
+  } catch (_) {}
+  return createDefaultState();
+}
+
+function saveLocalCache() {
+  try {
+    localStorage.setItem(UNIFIED_STORAGE_KEY, JSON.stringify(STATE));
+  } catch (_) {}
+}
+
+let STATE = loadLocalCache();
+let V = "painel";
+let E = STATE.employees[0]?.id || 1;
+
+function getPreviousMonthsList() {
+  const set = new Set(["2026-09", "2026-10"]);
+  Object.keys(STATE.points || {}).forEach(k => {
+    if (k < CURRENT_MONTH) set.add(k);
+  });
+  return Array.from(set).filter(k => k < CURRENT_MONTH).sort().reverse();
+}
+
+let PAST_COMP = getPreviousMonthsList()[0] || "2026-10";
+let REPORT_GENERATED_FOR = null;
+let UI = {
+  alertFilter: "todos",
+  search: "",
+  sectorFilter: "TODOS",
+  regimeFilter: "TODOS",
+  sortBy: "nome",
+  expandedTeamCards: new Set()
+};
+
+// =========================================================
+// 4. SINCRONIZAÇÃO EM TEMPO REAL COM FIRESTORE (1 DOC POR PESSOA)
+// =========================================================
+async function syncSingleEmployeeToCloud(emp) {
+  if (!IS_ADMIN || !emp) return;
+  try {
+    SYNC_META.cloudStatus = "syncing";
+    updateHeaderSyncUI();
+    await setDoc(doc(db, "pontorh_colaboradores", emp.uid), {
+      ...emp,
+      updatedAt: Date.now(),
+      updatedBy: CLIENT_ID
+    });
+    SYNC_META.cloudStatus = "synced";
+    SYNC_META.cloudError = "";
+    SYNC_META.lastSyncTime = new Date();
+    updateHeaderSyncUI();
+  } catch (err) {
+    console.warn("Erro ao sincronizar colaborador:", err);
+    SYNC_META.cloudStatus = "error";
+    SYNC_META.cloudError = err?.code === "resource-exhausted"
+      ? "Anexo muito grande (máx. 1 MB por ficha)"
+      : (err?.code || "Verificar regra do Firestore");
+    updateHeaderSyncUI();
+    MotionFX.toast(SYNC_META.cloudError, "warn");
+  }
+}
+
+async function deleteSingleEmployeeFromCloud(uid) {
+  if (!IS_ADMIN || !uid) return;
+  try {
+    SYNC_META.cloudStatus = "syncing";
+    updateHeaderSyncUI();
+    await deleteDoc(doc(db, "pontorh_colaboradores", uid));
+    SYNC_META.cloudStatus = "synced";
+    SYNC_META.cloudError = "";
+    updateHeaderSyncUI();
+  } catch (err) {
+    SYNC_META.cloudStatus = "error";
+    SYNC_META.cloudError = err?.code || "Erro ao excluir na nuvem";
+    updateHeaderSyncUI();
+  }
+}
+
+async function syncMonthPointsToCloud(comp) {
+  if (!IS_ADMIN || !comp) return;
+  try {
+    SYNC_META.cloudStatus = "syncing";
+    updateHeaderSyncUI();
+    await setDoc(doc(db, "pontorh_pontos", comp), {
+      comp,
+      dataJson: JSON.stringify(STATE.points[comp] || {}),
+      updatedAt: Date.now(),
+      updatedBy: CLIENT_ID
+    });
+    SYNC_META.cloudStatus = "synced";
+    SYNC_META.cloudError = "";
+    SYNC_META.lastSyncTime = new Date();
+    updateHeaderSyncUI();
+  } catch (err) {
+    console.warn("Erro ao sincronizar pontos:", err);
+    SYNC_META.cloudStatus = "error";
+    SYNC_META.cloudError = err?.code || "Verificar regra do Firestore";
+    updateHeaderSyncUI();
+  }
+}
+
+async function syncAllToCloud() {
+  if (!IS_ADMIN) return;
+  saveLocalCache();
+  SYNC_META.cloudStatus = "syncing";
+  updateHeaderSyncUI();
+  try {
+    for (const emp of STATE.employees) {
+      await setDoc(doc(db, "pontorh_colaboradores", emp.uid), {
+        ...emp,
+        updatedAt: Date.now(),
+        updatedBy: CLIENT_ID
+      });
+    }
+    for (const comp of Object.keys(STATE.points || {})) {
+      await setDoc(doc(db, "pontorh_pontos", comp), {
+        comp,
+        dataJson: JSON.stringify(STATE.points[comp]),
+        updatedAt: Date.now(),
+        updatedBy: CLIENT_ID
+      });
+    }
+    SYNC_META.cloudStatus = "synced";
+    SYNC_META.cloudError = "";
+    SYNC_META.lastSyncTime = new Date();
+    updateHeaderSyncUI();
+  } catch (err) {
+    SYNC_META.cloudStatus = "error";
+    SYNC_META.cloudError = err?.code || "Erro ao enviar dados";
+    updateHeaderSyncUI();
+  }
+}
+
+function connectUnifiedCloudListeners() {
+  if (CLOUD_INITIALIZED) return;
+  CLOUD_INITIALIZED = true;
+
+  // 1. Escuta em tempo real da lista de administradores autorizados
+  onSnapshot(doc(db, "pontorh_config", "geral"), (snap) => {
+    if (snap.exists() && Array.isArray(snap.data()?.admins)) {
+      AUTHORIZED_ADMINS = Array.from(new Set([MASTER_ADMIN_EMAIL, ...snap.data().admins.map(e => String(e).toLowerCase())]));
+      if (firebaseAuth?.currentUser && !firebaseAuth.currentUser.isAnonymous) {
+        const curEmail = (firebaseAuth.currentUser.email || "").toLowerCase();
+        if (isEmailAuthorizedAdmin(curEmail) && !IS_ADMIN) {
+          setAccessMode({ isAdmin: true, email: curEmail });
+          go({ animate: false });
+        }
+      }
+    }
+  }, () => {});
+
+  // 2. Escuta em tempo real de TODOS os colaboradores (1 doc por pessoa = 1 MB cada!)
+  onSnapshot(collection(db, "pontorh_colaboradores"), (snapshot) => {
+    SYNC_META.cloudStatus = "synced";
+    SYNC_META.cloudError = "";
+    SYNC_META.lastSyncTime = new Date();
+    updateHeaderSyncUI();
+
+    if (snapshot.empty) {
+      if (IS_ADMIN) {
+        syncAllToCloud();
+      }
+      hideSplashScreen();
+      return;
+    }
+
+    const cloudEmps = [];
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data && data.n) {
+        cloudEmps.push(data);
+      }
+    });
+
+    if (cloudEmps.length > 0) {
+      cloudEmps.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+      const normalized = normalizeStateShape({ employees: cloudEmps, points: STATE.points, updatedAt: Date.now() });
+      if (normalized) {
+        STATE.employees = normalized.employees;
+        if (!STATE.employees.some(x => String(x.id) === String(E))) {
+          E = STATE.employees[0]?.id || 1;
+        }
+        saveLocalCache();
+        go({ animate: false });
+      }
+    }
+    hideSplashScreen();
+  }, (err) => {
+    console.warn("Erro listener colaboradores:", err);
+    SYNC_META.cloudStatus = "error";
+    SYNC_META.cloudError = err?.code || "Verificar Regras do Firestore";
+    updateHeaderSyncUI();
+    hideSplashScreen();
+  });
+
+  // 3. Escuta em tempo real dos espelhos de horas por competência
+  onSnapshot(collection(db, "pontorh_pontos"), (snapshot) => {
+    if (snapshot.empty) {
+      if (IS_ADMIN) {
+        for (const comp of Object.keys(STATE.points || {})) {
+          syncMonthPointsToCloud(comp);
+        }
+      }
+      return;
+    }
+
+    let changed = false;
+    snapshot.forEach(docSnap => {
+      const d = docSnap.data();
+      if (d && d.comp && d.dataJson && d.updatedBy !== CLIENT_ID) {
+        try {
+          STATE.points[d.comp] = JSON.parse(d.dataJson);
+          changed = true;
+        } catch (_) {}
+      }
+    });
+
+    if (changed) {
+      saveLocalCache();
+      go({ animate: false });
+    }
+  }, () => {});
+}
+
+function forceSyncNow() {
+  if (!IS_ADMIN) return;
+  syncAllToCloud().then(() => {
+    MotionFX.toast("Todos os dados foram sincronizados na nuvem!");
+  });
+}
+
+// =========================================================
+// 5. MOTOR DE CÁLCULO (MEI & CLT)
+// =========================================================
+function ensureMonthData(comp) {
+  if (!STATE.points[comp]) STATE.points[comp] = {};
+  STATE.employees.forEach(emp => {
+    if (!STATE.points[comp][emp.id]) {
+      const isSeedPast = (comp === "2026-09" || comp === "2026-10");
+      STATE.points[comp][emp.id] = generateMonthRows(emp.id, comp, isSeedPast);
+    }
+  });
+}
+
+function calcMetrics(emp, comp) {
+  ensureMonthData(comp);
+  const rows = STATE.points[comp][emp.id] || [];
+  let ex = 0, ng = 0, at = 0, pe = 0, ok = 0;
+
+  rows.forEach(row => {
+    row.df = 0;
+    if (row.t === "Normal" && row.p) {
+      const [e, a, v, s] = row.p;
+      if (e == null || a == null || v == null || s == null) {
+        row.t = "Pendente";
+        pe++;
+      } else {
+        let df = (a - e) + (s - v) - 480;
+        if (Math.abs(df) <= 10) df = 0;
+        row.df = df;
+        if (df > 0) ex += df;
+        else if (df < 0) ng += Math.abs(df);
+        if (e - 480 > 10) at += (e - 480);
+        ok++;
+      }
+    } else if (row.t === "Pendente") {
+      pe++;
+    } else if (row.t === "Falta") {
+      row.df = -480;
+      ng += 480;
+      ok++;
+    } else if (row.t === "Abonado" || row.t === "Folga Comp.") {
+      row.df = 0;
+      ok++;
+    }
+  });
+
+  const isMEI = emp.regime === "MEI";
+  const vh = emp.sal / 220;
+  const fator = isMEI ? (emp.fatorHe || 1.0) : 1.5;
+  const exVal = (ex / 60) * vh * fator;
+  const ngVal = (ng / 60) * vh;
+  const ajuda = isMEI ? (emp.ajudaCusto || 0) : 0;
+
+  if (isMEI) {
+    const totalNF = Math.max(0, emp.sal + exVal - ngVal + ajuda);
+    const acumProjetado = (emp.acumAnual || 0) + totalNF;
+    const pctTeto = (acumProjetado / MEI_ANNUAL_LIMIT) * 100;
+    return {
+      isMEI: true, rows, ex, ng, at, pe, ok, vh, fator,
+      exVal, ngVal, ajuda, bruto: totalNF,
+      inss: 0, irrf: 0, vtVal: 0, descontos: ngVal,
+      liquido: totalNF, fgts: 0, acumProjetado, pctTeto
+    };
+  } else {
+    const bruto = Math.max(0, emp.sal + exVal - ngVal);
+    let inss = 0, prev = 0;
+    for (const [teto, aliq] of INSS) {
+      if (bruto > prev) inss += (Math.min(bruto, teto) - prev) * aliq;
+      prev = teto;
+    }
+    const baseIR = bruto - inss - (emp.dep || 0) * 189.59;
+    const faixaIR = IR.find(x => baseIR <= x[0]) || IR[IR.length - 1];
+    const irrf = Math.max(0, baseIR * faixaIR[1] - faixaIR[2]);
+    const vtVal = emp.vt ? emp.sal * 0.06 : 0;
+    const descontos = ngVal + inss + irrf + vtVal;
+    const liquido = Math.max(0, (emp.sal + exVal) - descontos);
+    const fgts = (emp.sal + exVal) * 0.08;
+    return {
+      isMEI: false, rows, ex, ng, at, pe, ok, vh, fator: 1.5,
+      exVal, ngVal, ajuda: 0, bruto: emp.sal + exVal,
+      inss, irrf, vtVal, descontos, liquido, fgts,
+      acumProjetado: 0, pctTeto: 0
+    };
+  }
+}
+
+function getDashboardAlerts(comp, allMetrics) {
+  const alerts = [];
+  const [, mo] = comp.split("-").map(Number);
+
+  STATE.employees.forEach(emp => {
+    const m = allMetrics[emp.id];
+    m.rows.forEach(r => {
+      if (r.t === "Pendente") {
+        const falta = !r.p ? "Marcação ausente" : (r.p[3] == null ? "Falta saída" : "Falta registro");
+        alerts.push({
+          type: "ponto", sev: "bad", badge: "Registro Pendente", bClass: "pe",
+          title: `${emp.n} — Dia ${String(r.d).padStart(2,"0")}/${String(mo).padStart(2,"0")}`,
+          desc: `${falta} (${emp.s})`,
+          actionLabel: "Ir ao Ponto", onClick: `ir(${emp.id}, 'ponto')`
+        });
+      }
+    });
+  });
+
+  STATE.employees.forEach(emp => {
+    const m = allMetrics[emp.id];
+    if (emp.regime === "MEI") {
+      if (!emp.cnpjMei || emp.cnpjMei.trim().length < 10) {
+        alerts.push({
+          type: "mei", sev: "bad", badge: "CNPJ MEI Pendente", bClass: "pe",
+          title: `${emp.n} — Cadastro MEI incompleto`,
+          desc: "Informe o CNPJ do MEI na Ficha para emissão de NFS-e.",
+          actionLabel: "Ver Ficha", onClick: `openEmployeeInTeam(${emp.id})`
+        });
+      }
+      if (m.pctTeto >= 80) {
+        alerts.push({
+          type: "mei", sev: m.pctTeto >= 100 ? "bad" : "warn",
+          badge: m.pctTeto >= 100 ? "Teto MEI Excedido" : `Teto MEI (${m.pctTeto.toFixed(0)}%)`,
+          bClass: m.pctTeto >= 100 ? "pe" : "wn",
+          title: `${emp.n} — Acumulado ${$$(m.acumProjetado)}`,
+          desc: `Limite anual MEI é ${$$(MEI_ANNUAL_LIMIT)}.`,
+          actionLabel: "Ver NF", onClick: `ir(${emp.id}, 'holerite')`
+        });
+      }
+    }
+  });
+
+  STATE.employees.forEach(emp => {
+    const docList = emp.regime === "MEI" ? DOC_MEI : DOC_CLT;
+    const missing = docList.filter((_, idx) => !emp.docs[idx]);
+    if (missing.length > 0) {
+      alerts.push({
+        type: "doc", sev: "warn", badge: `${missing.length} Doc. Pendente`, bClass: "wn",
+        title: `${emp.n} (${emp.regime})`,
+        desc: `Falta: ${missing.join(", ")}`,
+        actionLabel: "Ver Ficha", onClick: `openEmployeeInTeam(${emp.id})`
+      });
+    }
+  });
+
+  return alerts;
+}
+
+function go(opts = {}) {
+  const { animate = true } = opts;
+  const activeSearch = document.activeElement?.id === "emp-search";
+  const selStart = activeSearch ? document.activeElement.selectionStart : null;
+  const selEnd = activeSearch ? document.activeElement.selectionEnd : null;
+
+  ensureMonthData(CURRENT_MONTH);
+  const allMetrics = {};
+  let totalPending = 0;
+  STATE.employees.forEach(emp => {
+    allMetrics[emp.id] = calcMetrics(emp, CURRENT_MONTH);
+    totalPending += allMetrics[emp.id].pe;
+  });
+
+  // Aba "Fichas" removida pois todas as fichas completas já abrem dentro da aba "Equipe"
+  const NAV = [
+    ["painel", "Painel", totalPending],
+    ["equipe", "Equipe", 0],
+    ["ponto", "Espelho de Horas", 0],
+    ["holerite", "Fechamento / NF", 0],
+    ["passados", "Meses Passados", 0]
+  ];
+
+  if (!NAV.some(n => n[0] === V)) V = "painel";
+
+  const existingInk = $("#nav .nav-ink");
+  $("#nav").innerHTML = NAV.map(n =>
+    `<button class="${n[0] === V ? "on" : ""}" onclick="ir(0,'${n[0]}')">
+      ${n[1]}${n[2] > 0 ? `<span class="nav-cnt">${n[2]}</span>` : ""}
+    </button>`
+  ).join("");
+  if (existingInk) $("#nav").appendChild(existingInk);
+  MotionFX.updateNavInk();
+
+  $("#v").innerHTML = ({ painel, equipe, ponto, holerite, passados })[V](allMetrics);
+
+  if (activeSearch) {
+    const inp = $("#emp-search");
+    if (inp) {
+      inp.focus();
+      if (selStart != null && selEnd != null) inp.setSelectionRange(selStart, selEnd);
+    }
+  } else if (animate) {
+    MotionFX.staggerCards();
+    MotionFX.countNumbers();
+  }
+}
+
+function ir(id, view) {
+  if (id) E = id;
+  V = view;
+  saveNavState();
+  go({ animate: true });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openEmployeeInTeam(empId) {
+  E = empId;
+  V = "equipe";
+  UI.expandedTeamCards.add(String(empId));
+  saveNavState();
+  go({ animate: false });
+  requestAnimationFrame(() => {
+    const card = document.getElementById(`team-card-${empId}`);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+function currentMonthHeaderHtml(subtitle = "") {
+  return `
+  <div class="month-strip">
+    <div class="month-strip-l">
+      <span class="live-dot" aria-hidden="true"></span>
+      <div>
+        <div class="month-title">Mês Atual: ${formatMonthLabel(CURRENT_MONTH)}</div>
+        ${subtitle ? `<div class="month-sub">${subtitle}</div>` : ""}
+      </div>
+    </div>
+    <div class="toolbar-grp">
+      <span class="bd ok">Competência Ativa</span>
+    </div>
+  </div>`;
+}
+
+// =========================================================
+// TELA 1: PAINEL EXECUTIVO
+// =========================================================
+function painel(allMetrics) {
+  const emps = STATE.employees;
+  const meiCount = emps.filter(e => e.regime === "MEI").length;
+  const cltCount = emps.length - meiCount;
+
+  const sum = key => emps.reduce((acc, e) => acc + allMetrics[e.id][key], 0);
+  const totEx = sum("ex");
+  const totExVal = sum("exVal");
+  const totNg = sum("ng");
+  const totAt = sum("at");
+  const totPe = sum("pe");
+  const totOk = sum("ok");
+  const totPagarMEI = emps.filter(e => e.regime === "MEI").reduce((a, e) => a + allMetrics[e.id].liquido, 0);
+  const totPagarCLT = emps.filter(e => e.regime !== "MEI").reduce((a, e) => a + allMetrics[e.id].liquido, 0);
+  const totGeral = totPagarMEI + totPagarCLT;
+  const saldoGeral = totEx - totNg;
+
+  const allAlerts = getDashboardAlerts(CURRENT_MONTH, allMetrics);
+  const filteredAlerts = UI.alertFilter === "todos"
+    ? allAlerts
+    : allAlerts.filter(a => a.type === UI.alertFilter);
+
+  const sectors = [...new Set(emps.map(e => e.s))];
+  const sectorStats = sectors.map(s => {
+    const group = emps.filter(e => e.s === s);
+    const eMin = group.reduce((a, e) => a + allMetrics[e.id].ex, 0);
+    const nMin = group.reduce((a, e) => a + allMetrics[e.id].ng, 0);
+    const custo = group.reduce((a, e) => a + allMetrics[e.id].liquido, 0);
+    return { s, eMin, nMin, saldo: eMin - nMin, custo, count: group.length };
+  });
+  const maxBar = Math.max(...sectorStats.map(x => Math.max(x.eMin, x.nMin)), 1);
+  const totRegistros = Math.max(totOk + totPe, 1);
+
+  let rowsEmp = emps.filter(emp => {
+    const matchSearch = emp.n.toLowerCase().includes(UI.search.toLowerCase()) ||
+                        emp.c.toLowerCase().includes(UI.search.toLowerCase());
+    const matchSector = UI.sectorFilter === "TODOS" || emp.s === UI.sectorFilter;
+    const matchRegime = UI.regimeFilter === "TODOS" || emp.regime === UI.regimeFilter;
+    return matchSearch && matchSector && matchRegime;
+  });
+
+  rowsEmp.sort((a, b) => {
+    const ma = allMetrics[a.id], mb = allMetrics[b.id];
+    if (UI.sortBy === "extras") return mb.ex - ma.ex;
+    if (UI.sortBy === "atrasos") return mb.at - ma.at;
+    if (UI.sortBy === "valor") return mb.liquido - ma.liquido;
+    return a.n.localeCompare(b.n);
+  });
+
+  return currentMonthHeaderHtml("Resumo consolidado da operação vigente") + `
+  <div class="g">
+    <div class="c k">
+      <div class="k-top"><small>Equipe ativa</small><span class="bd mei">${meiCount} MEI • ${cltCount} CLT</span></div>
+      <b data-count="${emps.length}" data-fmt="int">${emps.length}</b>
+      <span class="k-sub">Prestadores e colaboradores ativos</span>
+    </div>
+
+    <div class="c k">
+      <div class="k-top"><small>Horas adicionais / extras</small><span class="bd">Contrato</span></div>
+      <b data-count="${totEx}" data-fmt="hm">${hm(totEx)}</b>
+      <span class="k-sub">Adicional apurado: <strong>${$$(totExVal)}</strong></span>
+    </div>
+
+    <div class="c k">
+      <div class="k-top"><small>Horas não prestadas / Atrasos</small><span class="bd ${totAt > 60 ? "wn" : ""}">${hm(totAt)} atraso</span></div>
+      <b class="${totNg > 0 ? "neg" : ""}" data-count="${totNg}" data-fmt="hm">${hm(totNg)}</b>
+      <span class="k-sub">Abatimento proporcional: ${$$(sum("ngVal"))}</span>
+    </div>
+
+    <div class="c k">
+      <div class="k-top"><small>Registros pendentes</small><span class="bd ${totPe > 0 ? "pe" : "ok"}">${totPe > 0 ? "Revisar" : "Em dia"}</span></div>
+      <b class="${totPe > 0 ? "neg" : "pos"}" data-count="${totPe}" data-fmt="int">${totPe}</b>
+      <span class="k-sub">${totPe > 0 ? "Dias com batida incompleta" : "Todos os dias completos"}</span>
+    </div>
+
+    <div class="c k">
+      <div class="k-top"><small>Saldo geral banco de horas</small><span class="bd ${saldoGeral >= 0 ? "ok" : "pe"}">${saldoGeral >= 0 ? "Crédito" : "Débito"}</span></div>
+      <b class="${saldoGeral >= 0 ? "pos" : "neg"}" data-count="${saldoGeral}" data-fmt="shm">${saldoGeral > 0 ? "+" : ""}${hm(saldoGeral)}</b>
+      <span class="k-sub">Saldo líquido acumulado no mês</span>
+    </div>
+
+    <div class="c k">
+      <div class="k-top"><small>Total Notas Fiscais (MEI) + Folha</small><span class="bd ok">Consolidado</span></div>
+      <b style="font-size:22px;padding-top:4px" data-count="${totGeral}" data-fmt="brl">${$$(totGeral)}</b>
+      <span class="k-sub">Notas MEI: <strong>${$$(totPagarMEI)}</strong>${totPagarCLT > 0 ? ` • CLT: ${$$(totPagarCLT)}` : ""}</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="c">
+      <div class="c-hd">
+        <h2>Pendências e alertas (${allAlerts.length})</h2>
+        <div class="ftabs">
+          <button class="ftab ${UI.alertFilter === "todos" ? "on" : ""}" onclick="UI.alertFilter='todos';go({animate:false})">Todos</button>
+          <button class="ftab ${UI.alertFilter === "ponto" ? "on" : ""}" onclick="UI.alertFilter='ponto';go({animate:false})">Horas</button>
+          <button class="ftab ${UI.alertFilter === "mei" ? "on" : ""}" onclick="UI.alertFilter='mei';go({animate:false})">MEI</button>
+          <button class="ftab ${UI.alertFilter === "doc" ? "on" : ""}" onclick="UI.alertFilter='doc';go({animate:false})">Docs</button>
+        </div>
+      </div>
+      ${filteredAlerts.length === 0
+        ? `<p class="m" style="padding:18px 0;text-align:center">Nenhuma pendência neste filtro.</p>`
+        : `<div class="alert-list">
+            ${filteredAlerts.map(a => `
+              <div class="alert-item ${a.sev}">
+                <div class="alert-txt">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+                    <span class="bd ${a.bClass}">${a.badge}</span>
+                    <b>${a.title}</b>
+                  </div>
+                  <span>${a.desc}</span>
+                </div>
+                <button class="mini-btn" onclick="${a.onClick}">${a.actionLabel}</button>
+              </div>
+            `).join("")}
+          </div>`
+      }
+    </div>
+
+    <div class="c">
+      <div class="c-hd">
+        <h2>Horas extras × negativas por setor</h2>
+        <div class="legend">
+          <span><i class="leg-dot" style="background:var(--ac)"></i>Extras</span>
+          <span><i class="leg-dot" style="background:var(--bad)"></i>Negativas</span>
+        </div>
+      </div>
+      ${sectorStats.map(x => `
+        <div class="sr">
+          <div class="sr-top">
+            <span>${x.s} <small>(${x.count})</small></span>
+            <span class="${x.saldo >= 0 ? "pos" : "neg"}" style="font-size:12.5px;font-weight:600">
+              Saldo: ${x.saldo > 0 ? "+" : ""}${hm(x.saldo)}
+            </span>
+          </div>
+          <small>Extras: ${hm(x.eMin)} • Negativas: ${hm(x.nMin)} • Total: ${$$(x.custo)}</small>
+          <div class="bar-wrap">
+            <i class="bar" style="width:${Math.max(2, x.eMin / maxBar * 100)}%"></i>
+            <i class="bar r" style="width:${Math.max(2, x.nMin / maxBar * 100)}%"></i>
+          </div>
+        </div>
+      `).join("")}
+
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
+        <div class="sr-top" style="margin-bottom:4px">
+          <span style="font-size:13px">Integridade dos registros</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--ok)">${(totOk / totRegistros * 100).toFixed(1)}% completos</span>
+        </div>
+        <div class="bar-wrap">
+          <i class="bar g" style="width:${totOk / totRegistros * 100}%"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="c">
+    <div class="c-hd">
+      <h2>Resumo individual — ${formatMonthLabel(CURRENT_MONTH)}</h2>
+      <div class="toolbar-grp">
+        <input id="emp-search" class="inp" type="search" placeholder="Buscar nome ou função..." value="${escHtml(UI.search)}" oninput="UI.search=this.value;go({animate:false})">
+        <select class="sel-sm" onchange="UI.regimeFilter=this.value;go({animate:false})">
+          <option value="TODOS">MEI + CLT</option>
+          <option value="MEI" ${UI.regimeFilter === "MEI" ? "selected" : ""}>Somente MEI</option>
+          <option value="CLT" ${UI.regimeFilter === "CLT" ? "selected" : ""}>Somente CLT</option>
+        </select>
+        <select class="sel-sm" onchange="UI.sectorFilter=this.value;go({animate:false})">
+          <option value="TODOS">Todos os setores</option>
+          ${sectors.map(s => `<option value="${escHtml(s)}" ${UI.sectorFilter === s ? "selected" : ""}>${escHtml(s)}</option>`).join("")}
+        </select>
+        <select class="sel-sm" onchange="UI.sortBy=this.value;go({animate:false})">
+          <option value="nome" ${UI.sortBy === "nome" ? "selected" : ""}>Ordenar: Nome</option>
+          <option value="valor" ${UI.sortBy === "valor" ? "selected" : ""}>Maior Valor NF/Líquido</option>
+          <option value="extras" ${UI.sortBy === "extras" ? "selected" : ""}>Mais Horas Extras</option>
+          <option value="atrasos" ${UI.sortBy === "atrasos" ? "selected" : ""}>Mais Atrasos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="w">
+      <table>
+        <thead>
+          <tr>
+            <th>Colaborador / Prestador</th>
+            <th>Regime</th>
+            <th>Setor</th>
+            <th>Extras (h / R$)</th>
+            <th>Negativas</th>
+            <th>Líquido / Valor NF</th>
+            <th class="n">Consultar</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsEmp.map(emp => {
+            const m = allMetrics[emp.id];
+            return `
+              <tr class="cl" onclick="openEmployeeInTeam(${emp.id})">
+                <td>
+                  <strong>${escHtml(emp.n)}</strong><br>
+                  <span style="font-size:12px;color:var(--mut)">${escHtml(emp.c)}${emp.regime === "MEI" && emp.cnpjMei ? ` • CNPJ: ${escHtml(emp.cnpjMei)}` : ""}</span>
+                </td>
+                <td><span class="bd ${emp.regime === "MEI" ? "mei" : ""}">${escHtml(emp.regime)}</span></td>
+                <td>${escHtml(emp.s)}</td>
+                <td>${hm(m.ex)} <span style="color:var(--mut);font-size:12px">(${$$(m.exVal)})</span></td>
+                <td class="${m.ng > 0 ? "neg" : ""}">${hm(m.ng)}</td>
+                <td><strong>${$$(m.liquido)}</strong></td>
+                <td class="n" onclick="event.stopPropagation()">
+                  <button class="mini-btn" onclick="openEmployeeInTeam(${emp.id})">Ficha</button>
+                  <button class="mini-btn" onclick="ir(${emp.id},'ponto')">Horas</button>
+                </td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  `;
+}
+
+// =========================================================
+// TELA 2: EQUIPE & FICHAS COMPLETAS EXPANSÍVEIS
+// =========================================================
+function toggleTeamCard(empId) {
+  const key = String(empId);
+  if (UI.expandedTeamCards.has(key)) {
+    UI.expandedTeamCards.delete(key);
+  } else {
+    UI.expandedTeamCards.add(key);
+    E = empId;
+  }
+  go({ animate: false });
+}
+
+function equipe(allMetrics) {
+  return `
+  <div class="toolbar">
+    <div class="toolbar-grp">
+      <strong>Quadro da Equipe &amp; Fichas (${STATE.employees.length})</strong>
+      <span class="m" style="margin:0">• Toque no colaborador ou em "Ficha" para abrir os dados completos</span>
+    </div>
+    <button class="btn admin-only" style="flex:0 0 auto;padding:8px 14px" onclick="openEmpModal()">+ Cadastrar Colaborador / MEI</button>
+  </div>
+  ${STATE.employees.map(f => {
+    const m = allMetrics[f.id];
+    const isExpanded = UI.expandedTeamCards.has(String(f.id));
+    const attCount = Array.isArray(f.attachments) ? f.attachments.length : 0;
+    return `
+      <div class="c" id="team-card-${f.id}">
+        <div class="hd cl" onclick="toggleTeamCard(${f.id})">
+          <div class="hd-l">
+            <div class="av" data-emp-avatar="${f.id}">${ini(f)}</div>
+            <div>
+              <b data-emp-title="${f.id}">${escHtml(f.n)}</b>
+              <span class="bd ${f.regime === "MEI" ? "mei" : ""}" style="margin-left:6px">${escHtml(f.regime)}</span>
+              <span class="bd ${f.status === "Ativo" ? "ok" : "wn"}" style="margin-left:4px">${escHtml(f.status)}</span>
+              ${attCount > 0 ? `<span class="bd" style="margin-left:4px">${attCount} anexo${attCount > 1 ? "s" : ""}</span>` : ""}
+              <br>
+              <span class="m">${escHtml(f.c || "Sem função")} • ${escHtml(f.s || "Sem setor")}</span>
+            </div>
+          </div>
+          <div class="toolbar-grp" onclick="event.stopPropagation()">
+            ${m.pe > 0 ? `<span class="bd pe">${m.pe} pendência</span>` : ""}
+            <button class="mini-btn ${isExpanded ? "pri" : ""}" onclick="toggleTeamCard(${f.id})">${isExpanded ? "Minimizar ▴" : "Ficha ▾"}</button>
+            <button class="mini-btn" onclick="ir(${f.id},'ponto')">Horas</button>
+            <button class="mini-btn" onclick="ir(${f.id},'holerite')">${f.regime === "MEI" ? "Fechamento NF" : "Holerite"}</button>
+          </div>
+        </div>
+        ${isExpanded ? `
+          <div class="team-card-expanded">
+            ${renderFichaContent(f, m, { inlineCard: true })}
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }).join("")}
+  `;
+}
+
+// =========================================================
+// SELETOR SIMÉTRICO DE COLABORADOR (NOME CENTRALIZADO + SETAS ABAIXO)
+// =========================================================
+function selectCurrentEmployee(rawId) {
+  const found = STATE.employees.find(x => String(x.id) === String(rawId));
+  if (!found) return;
+  E = found.id;
+  saveNavState();
+  go({ animate: false });
+}
+
+function stepEmployee(delta) {
+  const list = STATE.employees;
+  if (!list.length) return;
+  const curIdx = list.findIndex(x => String(x.id) === String(E));
+  const baseIdx = curIdx >= 0 ? curIdx : 0;
+  const nextIdx = (baseIdx + delta + list.length) % list.length;
+  E = list[nextIdx].id;
+  saveNavState();
+  go({ animate: false });
+}
+
+function empSelector() {
+  const list = STATE.employees;
+  const curIdx = Math.max(0, list.findIndex(x => String(x.id) === String(E)));
+  const disabledAttr = list.length <= 1 ? "disabled" : "";
+
+  return `
+  <div class="emp-nav-card no-print">
+    <div class="emp-nav-top">
+      <select class="emp-nav-select" aria-label="Selecionar colaborador" onchange="selectCurrentEmployee(this.value)">
+        ${list.map(f => `<option value="${f.id}" ${String(f.id) === String(E) ? "selected" : ""}>[${escHtml(f.regime)}] ${escHtml(f.n)} — ${escHtml(f.c)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="emp-nav-arrows">
+      <button type="button" class="emp-arrow-btn" onclick="stepEmployee(-1)" ${disabledAttr}>
+        <span>← Anterior</span>
+      </button>
+      <span class="bd">${curIdx + 1} de ${list.length}</span>
+      <button type="button" class="emp-arrow-btn" onclick="stepEmployee(1)" ${disabledAttr}>
+        <span>Próximo →</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+// =========================================================
+// ANEXOS & CONTEÚDO COMPLETO DA FICHA
+// =========================================================
+function formatFileSize(bytes) {
+  if (!bytes || bytes < 1024) return `${bytes || 0} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function compressImageToDataUrl(file, maxDim = 1280, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w >= h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+        const approxBytes = Math.round((compressedDataUrl.length * 3) / 4);
+        resolve({ dataUrl: compressedDataUrl, mimeType: "image/jpeg", sizeBytes: approxBytes });
+      };
+      img.onerror = () => reject(new Error("Não foi possível processar a imagem."));
+      img.src = ev.target.result;
+    };
+    reader.onerror = () => reject(new Error("Erro ao ler o arquivo de imagem."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readPdfAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const approxBytes = Math.round((dataUrl.length * 3) / 4);
+      resolve({ dataUrl, mimeType: "application/pdf", sizeBytes: approxBytes });
+    };
+    reader.onerror = () => reject(new Error("Erro ao ler o arquivo PDF."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleAttachmentUpload(empId, inputEl) {
+  if (!IS_ADMIN) return;
+  const file = inputEl?.files?.[0];
+  if (!file) return;
+
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  if (!emp) return;
+
+  const typeSel = document.getElementById(`att-type-${emp.id}`);
+  const docType = typeSel ? typeSel.value : "Outro Documento";
+
+  try {
+    let processed;
+    if (file.type.startsWith("image/")) {
+      processed = await compressImageToDataUrl(file, 1280, 0.72);
+    } else if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      if (file.size > 750 * 1024) {
+        alert("Este PDF ultrapassa 750 KB. Para manter a sincronização instantânea na nuvem, anexe um PDF de até 750 KB ou uma foto/imagem do documento (comprimida automaticamente).");
+        inputEl.value = "";
+        return;
+      }
+      processed = await readPdfAsDataUrl(file);
+    } else {
+      alert("Formato não suportado. Selecione um PDF ou uma imagem (JPG, PNG, WEBP).");
+      inputEl.value = "";
+      return;
+    }
+
+    if (!Array.isArray(emp.attachments)) emp.attachments = [];
+    emp.attachments.push({
+      id: "att_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 6),
+      docType,
+      fileName: file.name,
+      mimeType: processed.mimeType,
+      sizeLabel: formatFileSize(processed.sizeBytes),
+      uploadedAt: new Date().toLocaleDateString("pt-BR"),
+      dataUrl: processed.dataUrl
+    });
+
+    const lowerType = docType.toLowerCase();
+    const docList = emp.regime === "MEI" ? DOC_MEI : DOC_CLT;
+    docList.forEach((label, idx) => {
+      const l = label.toLowerCase();
+      if ((lowerType.includes("rg") || lowerType.includes("cpf") || lowerType.includes("cnh")) && (l.includes("rg") || l.includes("cpf") || l.includes("cnh"))) {
+        emp.docs[idx] = true;
+      } else if ((lowerType.includes("ccmei") || lowerType.includes("contrato")) && (l.includes("contrato") || l.includes("ccmei"))) {
+        emp.docs[idx] = true;
+      } else if (lowerType.includes("aso") && l.includes("aso")) {
+        emp.docs[idx] = true;
+      } else if (lowerType.includes("ctps") && l.includes("ctps")) {
+        emp.docs[idx] = true;
+      } else if (lowerType.includes("residência") && l.includes("residência")) {
+        emp.docs[idx] = true;
+      } else if (lowerType.includes("certidão") && l.includes("certidão")) {
+        emp.docs[idx] = true;
+      } else if (lowerType.includes("bancário") && l.includes("bancário")) {
+        emp.docs[idx] = true;
+      }
+    });
+
+    saveLocalCache();
+    await syncSingleEmployeeToCloud(emp);
+    go({ animate: false });
+    MotionFX.toast(`${docType} anexado e sincronizado!`);
+  } catch (err) {
+    alert(err?.message || "Não foi possível anexar o documento.");
+  } finally {
+    if (inputEl) inputEl.value = "";
+  }
+}
+
+function previewAttachment(empId, attId) {
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  const att = emp?.attachments?.find(a => a.id === attId);
+  if (!att) return;
+
+  const isPdf = att.mimeType === "application/pdf" || String(att.dataUrl).startsWith("data:application/pdf");
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal modal-wide">
+      <div class="c-hd" style="margin-bottom:8px">
+        <div>
+          <h3>${escHtml(att.docType)} — ${escHtml(emp.n)}</h3>
+          <p class="m" style="margin:2px 0 0">${escHtml(att.fileName)} • ${escHtml(att.sizeLabel || "")} • Anexado em ${escHtml(att.uploadedAt || "—")}</p>
+        </div>
+        <span class="bd ok">${isPdf ? "PDF" : "Imagem"}</span>
+      </div>
+      <div style="background:var(--sub);border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center">
+        ${isPdf
+          ? `<iframe src="${att.dataUrl}" style="width:100%;height:68vh;border:0;border-radius:6px" title="${escHtml(att.fileName)}"></iframe>`
+          : `<img src="${att.dataUrl}" alt="${escHtml(att.docType)}" style="max-width:100%;max-height:68vh;border-radius:6px;object-fit:contain">`
+        }
+      </div>
+      <div class="bt" style="margin-top:14px">
+        <button class="btn ok" onclick="downloadAttachment(${emp.id}, '${att.id}')">Baixar Arquivo</button>
+        <button class="btn s" onclick="closeModal()">Fechar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function downloadAttachment(empId, attId) {
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  const att = emp?.attachments?.find(a => a.id === attId);
+  if (!att) return;
+
+  const a = document.createElement("a");
+  a.href = att.dataUrl;
+  const cleanEmp = emp.n.replace(/[^a-zA-Z0-9À-ÿ _-]/g, "").trim() || "Colaborador";
+  const cleanType = att.docType.replace(/[^a-zA-Z0-9À-ÿ _-]/g, "").trim() || "Documento";
+  const ext = att.mimeType === "application/pdf" ? "pdf" : "jpg";
+  a.download = `${cleanEmp} - ${cleanType}.${ext}`;
+  a.click();
+  MotionFX.toast("Download do documento iniciado!");
+}
+
+async function deleteAttachment(empId, attId) {
+  if (!IS_ADMIN) return;
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  if (!emp || !Array.isArray(emp.attachments)) return;
+  if (!confirm("Excluir este documento anexado?")) return;
+
+  emp.attachments = emp.attachments.filter(a => a.id !== attId);
+  saveLocalCache();
+  await syncSingleEmployeeToCloud(emp);
+  go({ animate: false });
+  MotionFX.toast("Documento anexado removido", "warn");
+}
+
+function renderFichaContent(f, d) {
+  const isMEI = f.regime === "MEI";
+  const docList = isMEI ? DOC_MEI : DOC_CLT;
+  const attachments = Array.isArray(f.attachments) ? f.attachments : [];
+  const L = a => a.map(x => `<div><dt>${x[0]}</dt><dd>${escHtml(x[1] || "—")}</dd></div>`).join("");
+
+  const cnhStr = f.cnh ? `${f.cnh}${f.cnhCat ? ` (Cat. ${f.cnhCat})` : ""}` : "Não possui / Não informada";
+  const endCompleto = [f.endereco, f.numero ? `nº ${f.numero}` : "", f.complemento].filter(Boolean).join(", ");
+
+  return `
+  <div class="print-only" style="margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <strong style="font-size:17px;letter-spacing:0.02em">FICHA DE CADASTRO DE COLABORADOR / PRESTADOR</strong><br>
+        <span style="font-size:12px;color:#475569">PontoRH • Emitido em ${new Date().toLocaleDateString("pt-BR")}</span>
+      </div>
+      <span class="bd">${escHtml(f.regime)} • ${escHtml(f.status)}</span>
+    </div>
+  </div>
+
+  <div class="c-hd no-print" style="margin-bottom:12px">
+    <span class="m" style="margin:0">Admissão/Início: <strong>${dt(f.ad)}</strong> • Base: <strong>${$$(f.sal)}</strong>${f.tel ? ` • Tel: <strong>${escHtml(f.tel)}</strong>` : ""}</span>
+    <div class="toolbar-grp">
+      <button class="mini-btn pri" onclick="E=${f.id};window.print()">Imprimir Ficha</button>
+      <button class="mini-btn admin-only" onclick="openEmpModal(${f.id})">Editar Ficha</button>
+    </div>
+  </div>
+
+  <div class="ficha-grid">
+    <div class="c">
+      <div class="ficha-sec-title">1. Dados Pessoais</div>
+      <dl>${L([
+        ["Nome completo", f.n],
+        ["Data de nascimento", dt(f.nasc)],
+        ["Nacionalidade", f.nacionalidade],
+        ["Naturalidade", f.naturalidade],
+        ["Estado civil", f.estadoCivil],
+        ["CPF", f.cpf],
+        ["RG", f.rg],
+        ["CNH / Categoria", cnhStr],
+        ["Telefone / WhatsApp", f.tel],
+        ["E-mail", f.email]
+      ])}</dl>
+    </div>
+
+    <div class="c">
+      <div class="ficha-sec-title">2. Endereço</div>
+      <dl>${L([
+        ["Endereço", endCompleto || f.endereco],
+        ["Número", f.numero],
+        ["Complemento", f.complemento],
+        ["Bairro", f.bairro],
+        ["Cidade / UF", `${f.cidade || "—"} / ${f.uf || "—"}`],
+        ["CEP", f.cep]
+      ])}</dl>
+
+      <div class="ficha-sec-title" style="margin-top:18px">6. Contato para Emergência</div>
+      <dl>${L([
+        ["Nome", f.emergNome],
+        ["Parentesco", f.emergParentesco],
+        ["Telefone / WhatsApp", f.emergTel]
+      ])}</dl>
+    </div>
+
+    <div class="c">
+      <div class="ficha-sec-title">3. Dados Profissionais & Contrato</div>
+      <dl>${isMEI
+        ? L([
+            ["Regime", "MEI (Prestador PJ)"],
+            ["Cargo / Função", f.c],
+            ["Setor", f.s],
+            ["Data de admissão / início", dt(f.ad)],
+            ["Salário / Valor mensal", $$(f.sal)],
+            ["Jornada de trabalho", f.jornada],
+            ["Horário de entrada / saída", `${f.horaEntrada || "08:00"} às ${f.horaSaida || "17:00"}`],
+            ["Fator hora adicional", `${(f.fatorHe || 1).toFixed(1)}x (${$$(d.vh * (f.fatorHe || 1))}/h)`],
+            ["Ajuda de custo mensal", $$(f.ajudaCusto || 0)]
+          ])
+        : L([
+            ["Regime", "CLT (Carteira Assinada)"],
+            ["Cargo / Função", f.c],
+            ["Setor", f.s],
+            ["Data de admissão", dt(f.ad)],
+            ["Salário base", $$(f.sal)],
+            ["Jornada de trabalho", f.jornada],
+            ["Horário de entrada / saída", `${f.horaEntrada || "08:00"} às ${f.horaSaida || "17:00"}`],
+            ["Dependentes (IRRF)", String(f.dep || 0)],
+            ["Vale-transporte (6%)", f.vt ? "Sim" : "Não"]
+          ])
+      }</dl>
+    </div>
+
+    <div class="c">
+      <div class="ficha-sec-title">4. Dados Bancários & Pagamento</div>
+      <dl>${L([
+        ...(isMEI ? [["CNPJ MEI", f.cnpjMei || "Não informado"]] : []),
+        ["Banco / Instituição", f.banco],
+        ["Chave PIX", f.pix]
+      ])}</dl>
+
+      <div class="ficha-sec-title" style="margin-top:18px">5. Documentação (${escHtml(f.regime)})</div>
+      ${docList.map((docName, idx) => {
+        const ok = !!f.docs[idx];
+        return `
+          <div class="dr cl doc-row-item" onclick="toggleDoc(${f.id}, ${idx})">
+            <span style="display:flex;align-items:center;gap:8px;font-size:13px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${ok ? "var(--ok)" : "var(--mut)"}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                ${ok ? `<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>` : `<circle cx="12" cy="12" r="10"/>`}
+              </svg>
+              ${escHtml(docName)}
+            </span>
+            <span class="bd ${ok ? "ok" : "pe"}">${ok ? "Entregue" : "Pendente"}</span>
+          </div>
+        `;
+      }).join("")}
+
+      <div class="ficha-sec-title" style="margin-top:18px">5. Documentos Anexados do Colaborador (${attachments.length})</div>
+      <div class="att-upload-bar no-print admin-only">
+        <select id="att-type-${f.id}" class="sel-sm" style="flex:1;min-width:160px">
+          ${ATTACHMENT_DOC_TYPES.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join("")}
+        </select>
+        <label class="mini-btn pri" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          Anexar PDF / Imagem
+          <input type="file" accept=".pdf,image/*" style="display:none" onchange="handleAttachmentUpload(${f.id}, this)">
+        </label>
+      </div>
+
+      ${attachments.length === 0
+        ? `<p class="m" style="font-size:12.5px;margin:4px 0 0">Nenhum arquivo anexado a esta ficha.</p>`
+        : `<div>
+            ${attachments.map(att => `
+              <div class="att-item">
+                <div class="att-info">
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <span class="bd">${escHtml(att.docType)}</span>
+                    <strong style="font-size:12.5px">${escHtml(att.fileName)}</strong>
+                  </div>
+                  <span style="font-size:11.5px;color:var(--mut)">${escHtml(att.sizeLabel || "")} • ${escHtml(att.uploadedAt || "—")}</span>
+                </div>
+                <div class="att-actions no-print">
+                  <button type="button" class="mini-btn pri" onclick="previewAttachment(${f.id}, '${att.id}')">Visualizar</button>
+                  <button type="button" class="mini-btn ok-q" onclick="downloadAttachment(${f.id}, '${att.id}')">Baixar</button>
+                  <button type="button" class="mini-btn bad-q admin-only" onclick="deleteAttachment(${f.id}, '${att.id}')">Excluir</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>`
+      }
+    </div>
+  </div>
+
+  <div class="print-only">
+    <div class="sg">
+      <span>${escHtml(f.n)}<br><small>Assinatura do Colaborador / Prestador</small></span>
+      <span>Responsável RH / Empresa<br><small>Conferência Cadastral</small></span>
+    </div>
+  </div>
+
+  <div class="bt no-print">
+    <button class="btn" onclick="E=${f.id};window.print()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Imprimir Ficha
+    </button>
+    <button class="btn s" onclick="ir(${f.id},'ponto')">Espelho de Horas</button>
+    <button class="btn s" onclick="ir(${f.id},'holerite')">${isMEI ? "Fechamento NFS-e" : "Contracheque"}</button>
+  </div>
+  `;
+}
+
+async function toggleDoc(empId, docIdx) {
+  if (!IS_ADMIN) return;
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  if (emp) {
+    emp.docs[docIdx] = !emp.docs[docIdx];
+    saveLocalCache();
+    await syncSingleEmployeeToCloud(emp);
+    go({ animate: false });
+    MotionFX.toast(emp.docs[docIdx] ? "Documento salvo e sincronizado!" : "Documento marcado como pendente", emp.docs[docIdx] ? "ok" : "warn");
+  }
+}
+
+// =========================================================
+// TELA 3: ESPELHO DE HORAS
+// =========================================================
+function ponto(allMetrics) {
+  const f = STATE.employees.find(x => String(x.id) === String(E)) || STATE.employees[0];
+  E = f.id;
+  const d = allMetrics[f.id];
+  const isMEI = f.regime === "MEI";
+  const notas = d.rows.filter(r => r.obs && r.obs.trim() !== "");
+  const hasBlankDays = d.rows.some(r => r.t === "—");
+
+  return currentMonthHeaderHtml(IS_READ_ONLY ? "Espelho de jornada do mês vigente" : "Lançamento e conferência de jornada do mês vigente") + `
+  <div class="toolbar no-print admin-only">
+    <div class="toolbar-grp">
+      <strong>Lançamentos de Horas:</strong>
+    </div>
+    <div class="toolbar-grp">
+      ${hasBlankDays ? `<button class="mini-btn pri" onclick="fillStandardMonth(${f.id})">Preencher Dias Úteis</button>` : ""}
+      <button class="mini-btn" onclick="clearMonthRows(${f.id})">Zerar Mês</button>
+    </div>
+  </div>
+  ` + empSelector() + `
+  <div class="c">
+    <div class="c-hd">
+      <div>
+        <h2>${isMEI ? "Registro de Atividades e Horas (MEI)" : "Espelho de Ponto (CLT)"} — ${formatMonthLabel(CURRENT_MONTH)}</h2>
+        <p class="m" style="margin:2px 0 0">${escHtml(f.n)} • ${escHtml(f.c)} • Horário base: ${f.horaEntrada || "08:00"} às ${f.horaSaida || "17:00"}</p>
+      </div>
+      ${IS_READ_ONLY ? "" : `<span class="m no-print" style="margin:0">Clique no dia para ajustar</span>`}
+    </div>
+
+    <div class="w">
+      <table class="tn" id="point-table">
+        <thead>
+          <tr>
+            <th>Dia</th><th>Sem.</th><th>Início</th><th>Intervalo</th><th>Retorno</th><th>Término</th><th>Saldo</th><th>Status / Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.rows.map(r => {
+            const isPend = r.t === "Pendente";
+            const isAbono = r.t === "Abonado" || r.t === "Folga Comp.";
+            const isFalta = r.t === "Falta";
+            const isBlank = r.t === "—";
+            const rowCls = isPend || isFalta ? "pr cl" : (isAbono ? "ab cl" : "cl");
+
+            if (r.t === "Normal" || isPend) {
+              const p = r.p || [null, null, null, null];
+              return `
+                <tr data-day="${r.d}" class="${rowCls}" onclick="openPointModal(${f.id}, ${r.d})">
+                  <td><strong>${String(r.d).padStart(2,"0")}</strong></td>
+                  <td>${DS[r.w]}</td>
+                  <td>${tm(p[0])}</td>
+                  <td>${tm(p[1])}</td>
+                  <td>${tm(p[2])}</td>
+                  <td>${tm(p[3])}</td>
+                  <td><strong>${isPend ? "—" : (r.df > 0 ? "+" : "") + hm(r.df)}</strong></td>
+                  <td>
+                    ${isPend
+                      ? `<span class="bd pe">Pendente</span> <button class="mini-btn ok-q no-print admin-only" style="padding:2px 7px;font-size:11px;margin-left:4px" onclick="event.stopPropagation();quickFillDay(${f.id},${r.d})">Completar</button>`
+                      : `<span class="bd ok">OK</span>`}${r.obs ? " 📝" : ""}
+                  </td>
+                </tr>
+              `;
+            } else {
+              return `
+                <tr data-day="${r.d}" class="${rowCls}" onclick="openPointModal(${f.id}, ${r.d})">
+                  <td><strong>${String(r.d).padStart(2,"0")}</strong></td>
+                  <td>${DS[r.w]}</td>
+                  <td colspan="4" class="m">${isBlank ? "Sem lançamento" : escHtml(r.t)}</td>
+                  <td><strong>${isFalta ? "-8:00" : "0:00"}</strong></td>
+                  <td>
+                    ${isBlank
+                      ? (IS_READ_ONLY ? `<span class="m">—</span>` : `<button class="mini-btn ok-q no-print admin-only" style="padding:2px 8px;font-size:11px" onclick="event.stopPropagation();quickFillDay(${f.id},${r.d})">+ Lançar</button>`)
+                      : (isFalta ? `<span class="bd pe">Ausência</span>` : (isAbono ? `<span class="bd">${escHtml(r.t)}</span>` : "—"))}${r.obs ? " 📝" : ""}
+                  </td>
+                </tr>
+              `;
+            }
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:12px">
+      <strong>Resumo:</strong> Adicionais <strong>${hm(d.ex)}</strong> • Não prestadas <strong>${hm(d.ng)}</strong> • Saldo líquido: <strong class="${d.ex - d.ng >= 0 ? "pos" : "neg"}">${d.ex - d.ng > 0 ? "+" : ""}${hm(d.ex - d.ng)}</strong>
+    </p>
+
+    ${notas.length > 0 ? `
+      <div style="margin-top:10px;padding:10px;background:var(--sub);border-radius:8px;font-size:12.5px">
+        <strong>Observações registradas:</strong>
+        <ul style="margin:4px 0 0 18px;padding:0">
+          ${notas.map(n => `<li>Dia ${String(n.d).padStart(2,"0")}: <strong>${escHtml(n.t)}</strong> — ${escHtml(n.obs)}</li>`).join("")}
+        </ul>
+      </div>
+    ` : ""}
+
+    <div class="sg">
+      <span>${escHtml(f.n)} ${isMEI ? "(Prestador MEI)" : "(Colaborador)"}</span>
+      <span>Conferência Administrativa / Contratante</span>
+    </div>
+  </div>
+
+  <div class="bt no-print">
+    <button class="btn" onclick="window.print()">Imprimir / Salvar PDF</button>
+    <button class="btn s" onclick="ir(0,'holerite')">${isMEI ? "Ver Fechamento NFS-e" : "Ver Contracheque"}</button>
+  </div>
+  `;
+}
+
+function getDefaultTimesForEmp(emp) {
+  const ent = toMin(emp?.horaEntrada) ?? 480;
+  const sai = toMin(emp?.horaSaida) ?? 1020;
+  return [ent, 720, 780, sai];
+}
+
+async function quickFillDay(empId, day) {
+  if (!IS_ADMIN) return;
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  const r = STATE.points[CURRENT_MONTH][empId]?.find(x => x.d === day);
+  if (!r) return;
+  const def = getDefaultTimesForEmp(emp);
+  if (r.t === "Pendente" && r.p) {
+    r.p = [r.p[0] ?? def[0], r.p[1] ?? def[1], r.p[2] ?? def[2], r.p[3] ?? def[3]];
+  } else {
+    r.p = [...def];
+  }
+  r.t = "Normal";
+  saveLocalCache();
+  await syncMonthPointsToCloud(CURRENT_MONTH);
+  go({ animate: false });
+  MotionFX.flashRows(`#point-table tr[data-day="${day}"]`);
+  MotionFX.toast(`Dia ${String(day).padStart(2,"0")} preenchido e sincronizado!`);
+}
+
+async function fillStandardMonth(empId) {
+  if (!IS_ADMIN) return;
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  const def = getDefaultTimesForEmp(emp);
+  const rows = STATE.points[CURRENT_MONTH][empId] || [];
+  const changedDays = [];
+  rows.forEach(r => {
+    if (r.t === "—") {
+      r.t = "Normal";
+      r.p = [...def];
+      changedDays.push(r.d);
+    }
+  });
+  saveLocalCache();
+  await syncMonthPointsToCloud(CURRENT_MONTH);
+  go({ animate: false });
+  if (changedDays.length) {
+    const sel = changedDays.map(d => `#point-table tr[data-day="${d}"]`).join(",");
+    MotionFX.flashRows(sel);
+    MotionFX.toast(`${changedDays.length} dias úteis preenchidos e sincronizados!`);
+  }
+}
+
+async function clearMonthRows(empId) {
+  if (!IS_ADMIN) return;
+  if (!confirm("Zerar todos os lançamentos deste mês para este integrante?")) return;
+  STATE.points[CURRENT_MONTH][empId] = generateMonthRows(empId, CURRENT_MONTH, false);
+  saveLocalCache();
+  await syncMonthPointsToCloud(CURRENT_MONTH);
+  go({ animate: true });
+  MotionFX.toast("Lançamentos do mês zerados", "warn");
+}
+
+// =========================================================
+// TELA 4: FECHAMENTO NFS-e (MEI) OU CONTRACHEQUE (CLT)
+// =========================================================
+function holerite(allMetrics) {
+  const f = STATE.employees.find(x => String(x.id) === String(E)) || STATE.employees[0];
+  E = f.id;
+  const d = allMetrics[f.id];
+  const L = a => a.map(x => `<tr><td>${x[0]}</td><td class="n">${$$(x[1])}</td></tr>`).join("");
+
+  if (d.isMEI) {
+    const creditos = [
+      ["Valor Base do Contrato Mensal", f.sal],
+      [`Horas Adicionais Prestadas (${hm(d.ex)} × ${d.fator.toFixed(1)}x de ${$$(d.vh)}/h)`, d.exVal],
+      ["Ajuda de Custo / Reembolso Operacional", d.ajuda]
+    ].filter(x => x[1] > 0 || x[0].includes("Base"));
+
+    const abatimentos = [
+      [`Abatimento por Horas Não Prestadas (${hm(d.ng)})`, d.ngVal],
+      ["Retenções Trabalhistas (INSS / IRRF / FGTS — Isento no MEI)", 0]
+    ];
+
+    const ringColor = d.pctTeto >= 100 ? "var(--bad)" : (d.pctTeto >= 80 ? "var(--warn)" : "var(--ok)");
+    const barColor = d.pctTeto >= 100 ? "r" : (d.pctTeto >= 80 ? "w" : "g");
+    const radius = 30;
+    const circ = 2 * Math.PI * radius;
+    const offset = circ - (Math.min(100, d.pctTeto) / 100) * circ;
+
+    return currentMonthHeaderHtml("Demonstrativo financeiro vigente para emissão de NFS-e") + empSelector() + `
+    <div class="c">
+      <div class="c-hd">
+        <div>
+          <h2>Demonstrativo para Emissão de Nota Fiscal (MEI) — ${formatMonthLabel(CURRENT_MONTH)}</h2>
+          <p class="m" style="margin:2px 0 0"><strong>${escHtml(f.n)}</strong> • CNPJ MEI: <strong>${escHtml(f.cnpjMei || "Não informado")}</strong> • PIX: <strong>${escHtml(f.pix || "—")}</strong>${f.banco ? ` (${escHtml(f.banco)})` : ""}</p>
+        </div>
+        <span class="bd mei">Regime MEI (PJ)</span>
+      </div>
+
+      <div class="w">
+        <table>
+          <tr><th colspan="2">Valores dos Serviços Prestados (Créditos)</th></tr>
+          ${L(creditos)}
+          <tr><th colspan="2">Deduções / Isenções Contratuais</th></tr>
+          ${L(abatimentos)}
+        </table>
+      </div>
+
+      <p style="margin-top:14px;font-size:17px">
+        <b>Valor Total para Emissão da NFS-e: ${$$(d.liquido)}</b><br>
+        <span class="m">Sem desconto de INSS, IRRF ou Vale-Transporte (recolhimento via guia DAS pelo próprio MEI).</span>
+      </p>
+
+      <div class="mei-gauge-box">
+        <div class="ring-wrap">
+          <svg width="74" height="74" viewBox="0 0 74 74">
+            <circle cx="37" cy="37" r="${radius}" fill="none" stroke="var(--bd)" stroke-width="7"></circle>
+            <circle cx="37" cy="37" r="${radius}" fill="none" stroke="${ringColor}" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+              style="transition:stroke-dashoffset .7s cubic-bezier(.22,1,.36,1)"></circle>
+          </svg>
+          <span class="ring-pct" style="color:${ringColor}">${d.pctTeto.toFixed(0)}%</span>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div class="sr-top">
+            <span style="font-size:13px;font-weight:600">Monitoramento do Teto Anual MEI (R$ 81.000,00/ano)</span>
+            <span style="font-size:13px;font-weight:700" class="${d.pctTeto >= 85 ? "wrn" : "pos"}">${$$(d.acumProjetado)}</span>
+          </div>
+          <div class="bar-wrap">
+            <i class="bar ${barColor}" style="width:${Math.min(100, d.pctTeto)}%"></i>
+          </div>
+          <small style="color:var(--mut);display:block;margin-top:4px">Acumulado anterior (${$$(f.acumAnual || 0)}) + Nota deste mês (${$$(d.liquido)}).</small>
+        </div>
+      </div>
+
+      <div class="note-box">
+        <strong>Observação de Conformidade (RH):</strong> Para prestadores MEI, este demonstrativo serve exclusivamente como memória de cálculo para emissão da Nota Fiscal de Serviços (NFS-e) e pagamento via transferência/PIX, mantendo a autonomia contratual sem vínculo empregatício CLT.
+      </div>
+
+      <div class="sg">
+        <span>${escHtml(f.n)} — CNPJ ${escHtml(f.cnpjMei || "")}</span>
+        <span>Aprovação Financeiro / RH</span>
+      </div>
+    </div>
+
+    <div class="bt no-print">
+      <button class="btn" onclick="window.print()">Imprimir / Gerar PDF</button>
+      <button class="btn s" onclick="ir(0,'ponto')">Voltar ao Espelho</button>
+    </div>
+    `;
+  }
+
+  const P = [["Salário base", f.sal], ["Horas extras 50% (" + hm(d.ex) + ")", d.exVal]];
+  const Dd = [
+    ["Horas negativas / faltas (" + hm(d.ng) + ")", d.ngVal],
+    ["INSS (Tabela progressiva)", d.inss],
+    ["IRRF (Base deduzida)", d.irrf],
+    ["Vale-transporte (6%)", d.vtVal]
+  ].filter(x => x[1] > 0.005);
+
+  return currentMonthHeaderHtml("Demonstrativo salarial vigente") + empSelector() + `
+  <div class="c">
+    <h2>Contracheque CLT — ${formatMonthLabel(CURRENT_MONTH)}</h2>
+    <p class="m"><strong>${escHtml(f.n)}</strong> • ${escHtml(f.c)} (${escHtml(f.s)}) • CPF: ${escHtml(f.cpf)}</p>
+    <div class="w">
+      <table>
+        <tr><th colspan="2">Proventos</th></tr>
+        ${L(P)}
+        <tr><th colspan="2">Descontos</th></tr>
+        ${Dd.length ? L(Dd) : `<tr><td colspan="2" class="m">Sem descontos</td></tr>`}
+      </table>
+    </div>
+    <p style="margin-top:14px;font-size:16px">
+      <b>Líquido a receber: ${$$(d.liquido)}</b><br>
+      <span class="m">Bruto: ${$$(d.bruto)} • Descontos: ${$$(d.descontos)} • FGTS (8%): ${$$(d.fgts)}</span>
+    </p>
+  </div>
+  <div class="bt no-print">
+    <button class="btn" onclick="window.print()">Imprimir Contracheque</button>
+    <button class="btn s" onclick="ir(0,'ponto')">Voltar ao Espelho</button>
+  </div>
+  `;
+}
+
+// =========================================================
+// TELA 5: MESES PASSADOS + GERAR RELATÓRIO MENSAL DETALHADO
+// =========================================================
+function passados() {
+  const pastList = getPreviousMonthsList();
+  if (!pastList.includes(PAST_COMP)) {
+    PAST_COMP = pastList[0] || "2026-10";
+  }
+
+  ensureMonthData(PAST_COMP);
+  const pastMetrics = {};
+  STATE.employees.forEach(emp => {
+    pastMetrics[emp.id] = calcMetrics(emp, PAST_COMP);
+  });
+
+  const emps = STATE.employees;
+  const totEx = emps.reduce((a, e) => a + pastMetrics[e.id].ex, 0);
+  const totExVal = emps.reduce((a, e) => a + pastMetrics[e.id].exVal, 0);
+  const totNg = emps.reduce((a, e) => a + pastMetrics[e.id].ng, 0);
+  const totNgVal = emps.reduce((a, e) => a + pastMetrics[e.id].ngVal, 0);
+  const totAjuda = emps.reduce((a, e) => a + pastMetrics[e.id].ajuda, 0);
+  const totGeral = emps.reduce((a, e) => a + pastMetrics[e.id].liquido, 0);
+  const totMEI = emps.filter(e => e.regime === "MEI").reduce((a, e) => a + pastMetrics[e.id].liquido, 0);
+  const totCLT = emps.filter(e => e.regime !== "MEI").reduce((a, e) => a + pastMetrics[e.id].liquido, 0);
+  const totOk = emps.reduce((a, e) => a + pastMetrics[e.id].ok, 0);
+  const totPe = emps.reduce((a, e) => a + pastMetrics[e.id].pe, 0);
+  const saldoGeral = totEx - totNg;
+
+  const showFullReport = REPORT_GENERATED_FOR === PAST_COMP;
+
+  const sectors = [...new Set(emps.map(e => e.s))];
+  const sectorRows = sectors.map(s => {
+    const grp = emps.filter(e => e.s === s);
+    return {
+      s,
+      qtd: grp.length,
+      ex: grp.reduce((a, e) => a + pastMetrics[e.id].ex, 0),
+      exVal: grp.reduce((a, e) => a + pastMetrics[e.id].exVal, 0),
+      ng: grp.reduce((a, e) => a + pastMetrics[e.id].ng, 0),
+      ngVal: grp.reduce((a, e) => a + pastMetrics[e.id].ngVal, 0),
+      total: grp.reduce((a, e) => a + pastMetrics[e.id].liquido, 0)
+    };
+  });
+
+  const occurrences = [];
+  emps.forEach(emp => {
+    const m = pastMetrics[emp.id];
+    m.rows.forEach(r => {
+      if (r.t === "Falta" || r.t === "Abonado" || r.t === "Folga Comp." || r.t === "Pendente" || (r.obs && r.obs.trim() !== "")) {
+        occurrences.push({
+          nome: emp.n,
+          regime: emp.regime,
+          dia: String(r.d).padStart(2, "0"),
+          sem: DS[r.w],
+          tipo: r.t,
+          obs: r.obs || "—"
+        });
+      }
+    });
+  });
+
+  return `
+  <div class="toolbar no-print">
+    <div class="toolbar-grp">
+      <strong>Histórico de Meses Passados:</strong>
+      <select class="sel-sm" onchange="PAST_COMP=this.value;REPORT_GENERATED_FOR=null;go({animate:true})">
+        ${pastList.map(k => `<option value="${k}" ${PAST_COMP === k ? "selected" : ""}>${formatMonthLabel(k)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="toolbar-grp">
+      <button class="btn" style="flex:0 0 auto;padding:8px 16px" onclick="triggerMonthlyReport('${PAST_COMP}')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Gerar Relatório Mensal
+      </button>
+    </div>
+  </div>
+
+  ${!showFullReport ? `
+    <div class="c">
+      <div class="c-hd">
+        <div>
+          <h2>Competência Encerrada: ${formatMonthLabel(PAST_COMP)}</h2>
+          <p class="m" style="margin:2px 0 0">Clique em <strong>"Gerar Relatório Mensal"</strong> para consolidar o dossiê completo de horas, valores e ocorrências deste mês.</p>
+        </div>
+        <span class="bd">Arquivo Histórico</span>
+      </div>
+      <div class="report-kpis" style="margin-top:12px;margin-bottom:0">
+        <div class="rk"><small>Equipe no Mês</small><b>${emps.length} integrantes</b></div>
+        <div class="rk"><small>Horas Extras Apuradas</small><b>${hm(totEx)}</b></div>
+        <div class="rk"><small>Horas Negativas</small><b class="${totNg > 0 ? "neg" : ""}">${hm(totNg)}</b></div>
+        <div class="rk"><small>Total Consolidado</small><b>${$$(totGeral)}</b></div>
+      </div>
+    </div>
+  ` : `
+    <div class="report-box" id="monthly-report-sheet">
+      <div class="report-header">
+        <div>
+          <span class="bd" style="margin-bottom:6px">RELATÓRIO MENSAL CONSOLIDADO</span>
+          <h2 style="font-size:19px;margin:2px 0">Fechamento Completo — ${formatMonthLabel(PAST_COMP)}</h2>
+          <p class="m" style="margin:2px 0 0">Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})} • PontoRH</p>
+        </div>
+        <div class="toolbar-grp no-print">
+          <button class="mini-btn pri" onclick="window.print()">Imprimir / Salvar PDF</button>
+          <button class="mini-btn" onclick="exportCSVForComp('${PAST_COMP}')">Exportar CSV</button>
+        </div>
+      </div>
+
+      <div class="report-kpis">
+        <div class="rk">
+          <small>Total Geral Pago (NF + Folha)</small>
+          <b>${$$(totGeral)}</b>
+          <span style="font-size:11.5px;color:var(--mut)">MEI: ${$$(totMEI)}${totCLT > 0 ? ` • CLT: ${$$(totCLT)}` : ""}</span>
+        </div>
+        <div class="rk">
+          <small>Horas Adicionais / Extras</small>
+          <b class="pos">${hm(totEx)}</b>
+          <span style="font-size:11.5px;color:var(--mut)">Valor adicional: +${$$(totExVal)}</span>
+        </div>
+        <div class="rk">
+          <small>Horas Não Prestadas</small>
+          <b class="${totNg > 0 ? "neg" : ""}">${hm(totNg)}</b>
+          <span style="font-size:11.5px;color:var(--mut)">Abatimentos: -${$$(totNgVal)}</span>
+        </div>
+        <div class="rk">
+          <small>Saldo Banco & Integridade</small>
+          <b class="${saldoGeral >= 0 ? "pos" : "neg"}">${saldoGeral > 0 ? "+" : ""}${hm(saldoGeral)}</b>
+          <span style="font-size:11.5px;color:var(--mut)">${totOk} dias validados • ${totPe} pend.</span>
+        </div>
+      </div>
+
+      <div class="ficha-sec-title">1. Resumo Financeiro e Operacional por Setor</div>
+      <div class="w" style="margin-bottom:18px">
+        <table>
+          <thead>
+            <tr>
+              <th>Setor</th>
+              <th class="n">Qtd.</th>
+              <th class="n">Horas Extras</th>
+              <th class="n">Valor Extras</th>
+              <th class="n">Horas Negativas</th>
+              <th class="n">Abatimentos</th>
+              <th class="n">Total Setor</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sectorRows.map(sr => `
+              <tr>
+                <td><strong>${escHtml(sr.s)}</strong></td>
+                <td class="n">${sr.qtd}</td>
+                <td class="n">${hm(sr.ex)}</td>
+                <td class="n pos">+${$$(sr.exVal)}</td>
+                <td class="n ${sr.ng > 0 ? "neg" : ""}">${hm(sr.ng)}</td>
+                <td class="n">-${$$(sr.ngVal)}</td>
+                <td class="n"><strong>${$$(sr.total)}</strong></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ficha-sec-title">2. Detalhamento Individual por Colaborador / Prestador MEI</div>
+      <div class="w" style="margin-bottom:18px">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome / Cargo</th>
+              <th>Regime</th>
+              <th>CNPJ / CPF</th>
+              <th class="n">Dias OK</th>
+              <th class="n">Base</th>
+              <th class="n">Extras (h / R$)</th>
+              <th class="n">Negativas</th>
+              <th class="n">Ajuda Custo</th>
+              <th class="n">Valor Final / NF</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${emps.map(emp => {
+              const m = pastMetrics[emp.id];
+              return `
+                <tr>
+                  <td><strong>${escHtml(emp.n)}</strong><br><span style="font-size:11.5px;color:var(--mut)">${escHtml(emp.c)} • ${escHtml(emp.s)}</span></td>
+                  <td><span class="bd ${emp.regime === "MEI" ? "mei" : ""}">${escHtml(emp.regime)}</span></td>
+                  <td>${emp.regime === "MEI" ? escHtml(emp.cnpjMei || "—") : escHtml(emp.cpf)}</td>
+                  <td class="n">${m.ok}</td>
+                  <td class="n">${$$(emp.sal)}</td>
+                  <td class="n">${hm(m.ex)} (+${$$(m.exVal)})</td>
+                  <td class="n ${m.ng > 0 ? "neg" : ""}">${hm(m.ng)} (-${$$(m.ngVal)})</td>
+                  <td class="n">${$$(m.ajuda)}</td>
+                  <td class="n"><strong>${$$(m.liquido)}</strong></td>
+                </tr>
+              `;
+            }).join("")}
+            <tr style="background:var(--sub);font-weight:700">
+              <td colspan="4">TOTAL CONSOLIDADO (${formatMonthLabel(PAST_COMP).toUpperCase()})</td>
+              <td class="n">${$$(emps.reduce((a,e)=>a+e.sal,0))}</td>
+              <td class="n">${hm(totEx)} (+${$$(totExVal)})</td>
+              <td class="n">${hm(totNg)} (-${$$(totNgVal)})</td>
+              <td class="n">${$$(totAjuda)}</td>
+              <td class="n">${$$(totGeral)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ficha-sec-title">3. Ocorrências, Abonos e Observações do Período (${occurrences.length})</div>
+      ${occurrences.length === 0
+        ? `<p class="m">Nenhuma ausência, abono ou pendência registrada nesta competência.</p>`
+        : `<div class="w">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Colaborador</th>
+                  <th>Regime</th>
+                  <th>Ocorrência</th>
+                  <th>Observação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${occurrences.map(o => `
+                  <tr>
+                    <td><strong>Dia ${o.dia}</strong> (${o.sem})</td>
+                    <td>${escHtml(o.nome)}</td>
+                    <td>${escHtml(o.regime)}</td>
+                    <td><span class="bd ${o.tipo === "Falta" || o.tipo === "Pendente" ? "pe" : ""}">${escHtml(o.tipo)}</span></td>
+                    <td>${escHtml(o.obs)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>`
+      }
+
+      <div class="sg">
+        <span>Responsável RH / Departamento Pessoal</span>
+        <span>Diretoria / Aprovação Financeira</span>
+      </div>
+    </div>
+  `}
+  `;
+}
+
+function triggerMonthlyReport(comp) {
+  REPORT_GENERATED_FOR = comp;
+  go({ animate: true });
+  MotionFX.toast(`Relatório detalhado de ${formatMonthLabel(comp)} gerado!`);
+}
+
+// =========================================================
+// 6. MODAIS: INSTALAR APP, PONTO, FICHA & BACKUP
+// =========================================================
+function closeModal() { $("#modal-root").innerHTML = ""; }
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if ($("#modal-root").innerHTML !== "") closeModal();
+    else if (document.body.classList.contains("sidebar-open")) closeSidebar();
+  }
+});
+
+async function triggerInstallApp() {
+  if (deferredInstallPrompt) {
+    try {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice && choice.outcome === "accepted") {
+        deferredInstallPrompt = null;
+        return;
+      }
+    } catch (_) {}
+  }
+
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="c-hd" style="margin-bottom:4px">
+        <h3>Instalar PontoRH como Aplicativo</h3>
+        <span class="bd ok">App Nativo (PWA)</span>
+      </div>
+      <p class="m">Instale o PontoRH na tela inicial do seu celular ou computador para abrir em tela cheia como um aplicativo da Play Store:</p>
+
+      <div class="cloud-box" style="margin-bottom:10px">
+        <strong>Celular Android (Google Chrome):</strong>
+        <ol style="margin:6px 0 0 18px;padding:0;font-size:13px;line-height:1.6">
+          <li>Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior direito do Chrome.</li>
+          <li>Toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.</li>
+          <li>Confirme em <strong>Instalar</strong>. O ícone do PontoRH aparecerá junto aos seus apps.</li>
+        </ol>
+      </div>
+
+      <div class="cloud-box" style="margin-bottom:10px">
+        <strong>iPhone / iPad (Safari):</strong>
+        <p style="margin:4px 0 0;font-size:13px">Toque no botão <strong>Compartilhar</strong> na barra inferior e escolha <strong>Adicionar à Tela de Início</strong>.</p>
+      </div>
+
+      <div class="cloud-box">
+        <strong>Computador (Chrome ou Edge):</strong>
+        <p style="margin:4px 0 0;font-size:13px">Clique no ícone de <strong>Instalar PontoRH</strong> no canto direito da barra de endereço do navegador.</p>
+      </div>
+
+      <div class="bt" style="margin-top:16px">
+        <button class="btn" onclick="closeModal()">Entendi</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openPointModal(empId, day) {
+  if (!IS_ADMIN) return;
+  E = empId;
+  const emp = STATE.employees.find(x => String(x.id) === String(empId));
+  const r = STATE.points[CURRENT_MONTH][empId].find(x => x.d === day);
+  if (!r) return;
+  const def = getDefaultTimesForEmp(emp);
+  const p = r.p || def;
+  const statusVal = ["Normal", "Pendente", "Abonado", "Folga Comp.", "Falta", "Folga"].includes(r.t) ? r.t : "Normal";
+
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h3>Ajustar Registro — Dia ${String(day).padStart(2,"0")} (${DS[r.w]})</h3>
+      <p class="m">${escHtml(emp.n)} (${escHtml(emp.regime)}) • ${formatMonthLabel(CURRENT_MONTH)}</p>
+      <div class="fg">
+        <div class="fld full">
+          <label>Situação do Dia</label>
+          <select id="pt-status" onchange="document.getElementById('pt-times').style.display=(this.value==='Normal'||this.value==='Pendente')?'grid':'none'">
+            <option value="Normal" ${statusVal === "Normal" || statusVal === "Pendente" ? "selected" : ""}>Dia Trabalhado / Prestação de Serviço</option>
+            <option value="Abonado" ${statusVal === "Abonado" ? "selected" : ""}>Abonado / Ausência Justificada</option>
+            <option value="Folga Comp." ${statusVal === "Folga Comp." ? "selected" : ""}>Folga Compensatória (Banco)</option>
+            <option value="Falta" ${statusVal === "Falta" ? "selected" : ""}>Dia Não Prestado (-8:00)</option>
+            <option value="Folga" ${statusVal === "Folga" ? "selected" : ""}>Folga Semanal</option>
+          </select>
+        </div>
+      </div>
+      <div id="pt-times" class="fg" style="display:${(statusVal === "Normal" || statusVal === "Pendente") ? "grid" : "none"}">
+        <div class="fld"><label>Início</label><input type="time" id="pt-e" value="${p[0] != null ? tm(p[0]) : tm(def[0])}"></div>
+        <div class="fld"><label>Saída Intervalo</label><input type="time" id="pt-a" value="${p[1] != null ? tm(p[1]) : "12:00"}"></div>
+        <div class="fld"><label>Retorno Intervalo</label><input type="time" id="pt-v" value="${p[2] != null ? tm(p[2]) : "13:00"}"></div>
+        <div class="fld"><label>Término</label><input type="time" id="pt-s" value="${p[3] != null ? tm(p[3]) : tm(def[3])}"></div>
+      </div>
+      <div class="fg">
+        <div class="fld full"><label>Observação</label><input type="text" id="pt-obs" value="${escHtml(r.obs || "")}" placeholder="Motivo do ajuste..."></div>
+      </div>
+      <div class="bt" style="margin-top:16px">
+        <button class="btn" onclick="savePointEdit(${empId}, ${day})">Salvar</button>
+        <button class="btn s" onclick="closeModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function savePointEdit(empId, day) {
+  if (!IS_ADMIN) return;
+  const r = STATE.points[CURRENT_MONTH][empId].find(x => x.d === day);
+  const st = $("#pt-status").value;
+  r.obs = $("#pt-obs").value.trim();
+  if (st === "Normal") {
+    const e = toMin($("#pt-e").value), a = toMin($("#pt-a").value), v = toMin($("#pt-v").value), s = toMin($("#pt-s").value);
+    r.p = [e, a, v, s];
+    r.t = (e != null && a != null && v != null && s != null) ? "Normal" : "Pendente";
+  } else {
+    r.t = st; r.p = null;
+  }
+  saveLocalCache();
+  await syncMonthPointsToCloud(CURRENT_MONTH);
+  closeModal();
+  go({ animate: false });
+  MotionFX.flashRows(`#point-table tr[data-day="${day}"]`);
+  MotionFX.toast(`Dia ${String(day).padStart(2,"0")} salvo e sincronizado!`);
+}
+
+function handleLiveNameInput(rawVal, empId) {
+  const clean = String(rawVal || "").trim();
+  const displayTitle = clean || "Novo Colaborador / Prestador";
+  const initials = iniFromName(clean);
+
+  const modalTitle = document.getElementById("modal-live-title");
+  const modalAv = document.getElementById("modal-live-avatar");
+  if (modalTitle) modalTitle.textContent = displayTitle;
+  if (modalAv) modalAv.textContent = initials;
+
+  if (empId != null) {
+    $$all(`[data-emp-title="${empId}"]`).forEach(el => { el.textContent = displayTitle; });
+    $$all(`[data-emp-avatar="${empId}"]`).forEach(el => { el.textContent = initials; });
+  }
+}
+
+function openEmpModal(empId = null) {
+  if (!IS_ADMIN) return;
+  const emp = empId != null ? STATE.employees.find(x => String(x.id) === String(empId)) : null;
+  const reg = emp ? emp.regime : "MEI";
+  const initialName = emp ? emp.n : "";
+
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="hd-l" style="margin-bottom:10px">
+        <div class="av" id="modal-live-avatar">${iniFromName(initialName)}</div>
+        <div>
+          <h3 id="modal-live-title" style="margin:0">${escHtml(initialName || (emp ? "Editar Ficha de Cadastro" : "Cadastrar Novo Colaborador / MEI"))}</h3>
+          <p class="m" style="margin:2px 0 0">${emp ? "Editando ficha cadastral isolada" : "Nova ficha cadastral isolada"}</p>
+        </div>
+      </div>
+
+      <div class="fg">
+        <div class="modal-sec">1. Dados Pessoais</div>
+        <div class="fld full"><label>Nome Completo</label><input id="em-n" value="${escHtml(initialName)}" placeholder="Nome completo" oninput="handleLiveNameInput(this.value, ${emp ? JSON.stringify(emp.id) : "null"})"></div>
+        <div class="fld"><label>Data de Nascimento</label><input type="date" id="em-nasc" value="${emp && emp.nasc ? emp.nasc : ""}"></div>
+        <div class="fld"><label>Estado Civil</label><input id="em-ec" value="${escHtml(emp ? (emp.estadoCivil ?? "") : "Solteiro(a)")}"></div>
+        <div class="fld"><label>Nacionalidade</label><input id="em-nac" value="${escHtml(emp ? (emp.nacionalidade ?? "") : "Brasileira")}"></div>
+        <div class="fld"><label>Naturalidade</label><input id="em-nat" value="${escHtml(emp ? (emp.naturalidade ?? "") : "Rio de Janeiro")}"></div>
+        <div class="fld"><label>CPF</label><input id="em-cpf" value="${escHtml(emp ? (emp.cpf ?? "") : "")}" placeholder="000.000.000-00"></div>
+        <div class="fld"><label>RG</label><input id="em-rg" value="${escHtml(emp ? (emp.rg ?? "") : "")}" placeholder="00.000.000-0"></div>
+        <div class="fld"><label>CNH (se possuir)</label><input id="em-cnh" value="${escHtml(emp ? (emp.cnh ?? "") : "")}" placeholder="Número CNH"></div>
+        <div class="fld"><label>Categoria CNH</label><input id="em-cnhcat" value="${escHtml(emp ? (emp.cnhCat ?? "") : "")}" placeholder="Ex: AB, B"></div>
+        <div class="fld"><label>Telefone / WhatsApp</label><input id="em-tel" value="${escHtml(emp ? (emp.tel ?? "") : "")}" placeholder="(21) 99000-0000"></div>
+        <div class="fld"><label>E-mail</label><input type="email" id="em-email" value="${escHtml(emp ? (emp.email ?? "") : "")}" placeholder="email@exemplo.com"></div>
+
+        <div class="modal-sec">2. Endereço</div>
+        <div class="fld full"><label>Endereço (Rua / Av.)</label><input id="em-end" value="${escHtml(emp ? (emp.endereco ?? "") : "")}" placeholder="Rua..."></div>
+        <div class="fld"><label>Número</label><input id="em-num" value="${escHtml(emp ? (emp.numero ?? "") : "")}"></div>
+        <div class="fld"><label>Complemento</label><input id="em-comp" value="${escHtml(emp ? (emp.complemento ?? "") : "")}" placeholder="Casa, Apto..."></div>
+        <div class="fld"><label>Bairro</label><input id="em-bairro" value="${escHtml(emp ? (emp.bairro ?? "") : "")}"></div>
+        <div class="fld"><label>CEP</label><input id="em-cep" value="${escHtml(emp ? (emp.cep ?? "") : "")}" placeholder="00000-000"></div>
+        <div class="fld"><label>Cidade</label><input id="em-cidade" value="${escHtml(emp ? (emp.cidade ?? "") : "Rio de Janeiro")}"></div>
+        <div class="fld"><label>UF</label><input id="em-uf" maxlength="2" value="${escHtml(emp ? (emp.uf ?? "") : "RJ")}"></div>
+
+        <div class="modal-sec">3. Dados Profissionais & Contrato</div>
+        <div class="fld">
+          <label>Regime</label>
+          <select id="em-reg" onchange="toggleRegimeFields(this.value)">
+            <option value="MEI" ${reg === "MEI" ? "selected" : ""}>MEI (Prestador PJ)</option>
+            <option value="CLT" ${reg === "CLT" ? "selected" : ""}>CLT (Carteira Assinada)</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>Situação</label>
+          <select id="em-st">
+            <option value="Ativo" ${!emp || emp.status === "Ativo" ? "selected" : ""}>Ativo</option>
+            <option value="Férias" ${emp && emp.status === "Férias" ? "selected" : ""}>Férias / Recesso</option>
+            <option value="Afastado" ${emp && emp.status === "Afastado" ? "selected" : ""}>Afastado</option>
+          </select>
+        </div>
+        <div class="fld"><label>Cargo / Função</label><input id="em-c" value="${escHtml(emp ? (emp.c ?? "") : "")}" placeholder="Ex: Aux. Administrativo"></div>
+        <div class="fld"><label>Setor</label><input id="em-s" value="${escHtml(emp ? (emp.s ?? "") : "Administrativo")}"></div>
+        <div class="fld"><label>Data de Admissão / Início</label><input type="date" id="em-ad" value="${emp ? (emp.ad || "") : new Date().toISOString().slice(0, 10)}"></div>
+        <div class="fld"><label>Salário / Valor Mensal (R$)</label><input type="number" step="0.01" id="em-sal" value="${emp ? emp.sal : 1800}"></div>
+        <div class="fld full"><label>Jornada de Trabalho</label><input id="em-jornada" value="${escHtml(emp ? (emp.jornada ?? "") : "44h semanais (Seg a Sex)")}"></div>
+        <div class="fld"><label>Horário de Entrada</label><input type="time" id="em-hent" value="${emp && emp.horaEntrada ? emp.horaEntrada : "08:00"}"></div>
+        <div class="fld"><label>Horário de Saída</label><input type="time" id="em-hsai" value="${emp && emp.horaSaida ? emp.horaSaida : "17:00"}"></div>
+      </div>
+
+      <div id="mei-fields" class="fg" style="display:${reg === "MEI" ? "grid" : "none"}">
+        <div class="fld"><label>CNPJ do MEI</label><input id="em-cnpj" value="${escHtml(emp ? (emp.cnpjMei ?? "") : "")}" placeholder="00.000.000/0001-00"></div>
+        <div class="fld">
+          <label>Fator Hora Adicional (MEI)</label>
+          <select id="em-fator">
+            <option value="1.0" ${!emp || emp.fatorHe === 1.0 ? "selected" : ""}>1,0x (Hora Normal)</option>
+            <option value="1.5" ${emp && emp.fatorHe === 1.5 ? "selected" : ""}>1,5x (+50% Acordado)</option>
+          </select>
+        </div>
+        <div class="fld"><label>Ajuda de Custo Mensal (R$)</label><input type="number" step="0.01" id="em-ajuda" value="${emp ? (emp.ajudaCusto || 0) : 0}"></div>
+        <div class="fld"><label>Acumulado MEI no Ano (R$)</label><input type="number" step="0.01" id="em-acum" value="${emp ? (emp.acumAnual || 0) : 0}"></div>
+      </div>
+
+      <div id="clt-fields" class="fg" style="display:${reg === "CLT" ? "grid" : "none"}">
+        <div class="fld"><label>Dependentes (IRRF)</label><input type="number" min="0" id="em-dep" value="${emp ? (emp.dep || 0) : 0}"></div>
+        <div class="fld">
+          <label>Vale-Transporte (6%)</label>
+          <select id="em-vt">
+            <option value="1" ${!emp || emp.vt ? "selected" : ""}>Sim</option>
+            <option value="0" ${emp && !emp.vt ? "selected" : ""}>Não</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fg">
+        <div class="modal-sec">4. Dados Bancários</div>
+        <div class="fld"><label>Banco / Instituição</label><input id="em-banco" value="${escHtml(emp ? (emp.banco ?? "") : "")}" placeholder="Ex: Inter, Nubank, Itaú"></div>
+        <div class="fld"><label>Chave PIX</label><input id="em-pix" value="${escHtml(emp ? (emp.pix ?? "") : "")}" placeholder="CPF, Celular, E-mail ou CNPJ"></div>
+
+        <div class="modal-sec">6. Contato para Emergência</div>
+        <div class="fld"><label>Nome do Contato</label><input id="em-em-nome" value="${escHtml(emp ? (emp.emergNome ?? "") : "")}"></div>
+        <div class="fld"><label>Parentesco</label><input id="em-em-par" value="${escHtml(emp ? (emp.emergParentesco ?? "") : "")}" placeholder="Ex: Esposo(a), Mãe, Pai"></div>
+        <div class="fld full"><label>Telefone / WhatsApp de Emergência</label><input id="em-em-tel" value="${escHtml(emp ? (emp.emergTel ?? "") : "")}" placeholder="(21) 99000-0000"></div>
+      </div>
+
+      <div class="bt" style="margin-top:16px">
+        <button class="btn" onclick="saveEmp(${emp ? emp.id : "null"})">Salvar Ficha</button>
+        <button class="btn s" onclick="closeModal()">Cancelar</button>
+      </div>
+      ${emp && STATE.employees.length > 1 ? `<div class="bt"><button class="btn d" onclick="deleteEmp(${emp.id})">Excluir Cadastro</button></div>` : ""}
+    </div>
+  </div>`;
+}
+
+function toggleRegimeFields(val) {
+  $("#mei-fields").style.display = val === "MEI" ? "grid" : "none";
+  $("#clt-fields").style.display = val === "CLT" ? "grid" : "none";
+}
+
+async function saveEmp(empId) {
+  if (!IS_ADMIN) return;
+  const nome = $("#em-n").value.trim();
+  if (!nome) return alert("Informe o nome completo.");
+  const regime = $("#em-reg").value;
+
+  const data = {
+    n: nome,
+    nasc: $("#em-nasc").value || "",
+    estadoCivil: $("#em-ec").value.trim(),
+    nacionalidade: $("#em-nac").value.trim(),
+    naturalidade: $("#em-nat").value.trim(),
+    cpf: $("#em-cpf").value.trim(),
+    rg: $("#em-rg").value.trim(),
+    cnh: $("#em-cnh").value.trim(),
+    cnhCat: $("#em-cnhcat").value.trim(),
+    tel: $("#em-tel").value.trim(),
+    email: $("#em-email").value.trim(),
+    endereco: $("#em-end").value.trim(),
+    numero: $("#em-num").value.trim(),
+    complemento: $("#em-comp").value.trim(),
+    bairro: $("#em-bairro").value.trim(),
+    cep: $("#em-cep").value.trim(),
+    cidade: $("#em-cidade").value.trim(),
+    uf: $("#em-uf").value.trim().toUpperCase(),
+    regime,
+    status: $("#em-st").value,
+    c: $("#em-c").value.trim() || "Colaborador",
+    s: $("#em-s").value.trim() || "Geral",
+    ad: $("#em-ad").value || new Date().toISOString().slice(0, 10),
+    sal: parseFloat($("#em-sal").value) || 1518,
+    jornada: $("#em-jornada").value.trim(),
+    horaEntrada: $("#em-hent").value || "08:00",
+    horaSaida: $("#em-hsai").value || "17:00",
+    cnpjMei: $("#em-cnpj").value.trim(),
+    fatorHe: parseFloat($("#em-fator").value) || 1.0,
+    ajudaCusto: parseFloat($("#em-ajuda").value) || 0,
+    acumAnual: parseFloat($("#em-acum").value) || 0,
+    dep: parseInt($("#em-dep").value) || 0,
+    vt: parseInt($("#em-vt").value) || 0,
+    banco: $("#em-banco").value.trim(),
+    pix: $("#em-pix").value.trim(),
+    emergNome: $("#em-em-nome").value.trim(),
+    emergParentesco: $("#em-em-par").value.trim(),
+    emergTel: $("#em-em-tel").value.trim()
+  };
+
+  let targetEmp;
+  if (empId != null) {
+    const idx = STATE.employees.findIndex(x => String(x.id) === String(empId));
+    if (idx >= 0) {
+      const existing = STATE.employees[idx];
+      targetEmp = {
+        ...existing,
+        ...data,
+        docs: Array.isArray(existing.docs) ? [...existing.docs] : [false, false, false, false, false],
+        attachments: Array.isArray(existing.attachments) ? existing.attachments.map(a => ({ ...a })) : []
+      };
+      STATE.employees[idx] = targetEmp;
+    }
+  } else {
+    targetEmp = createIsolatedEmployee(
+      {
+        ...data,
+        docs: [false, false, false, false, false],
+        attachments: []
+      },
+      STATE.employees
+    );
+    STATE.employees.push(targetEmp);
+    E = targetEmp.id;
+    UI.expandedTeamCards.add(String(targetEmp.id));
+    ensureMonthData(CURRENT_MONTH);
+  }
+
+  saveLocalCache();
+  closeModal();
+  go({ animate: true });
+  if (targetEmp) {
+    await syncSingleEmployeeToCloud(targetEmp);
+    if (empId == null) await syncMonthPointsToCloud(CURRENT_MONTH);
+  }
+  MotionFX.toast(empId != null ? "Ficha atualizada e sincronizada!" : "Novo colaborador cadastrado e sincronizado!");
+}
+
+async function deleteEmp(empId) {
+  if (!IS_ADMIN) return;
+  if (!confirm("Excluir este cadastro?")) return;
+  const target = STATE.employees.find(x => String(x.id) === String(empId));
+  STATE.employees = STATE.employees.filter(x => String(x.id) !== String(empId));
+  UI.expandedTeamCards.delete(String(empId));
+  E = STATE.employees[0]?.id || 1;
+  saveLocalCache();
+  closeModal();
+  go({ animate: true });
+  if (target?.uid) {
+    await deleteSingleEmployeeFromCloud(target.uid);
+  }
+  MotionFX.toast("Cadastro removido e sincronizado", "warn");
+}
+
+function openBackupModal() {
+  if (!IS_ADMIN) return;
+  $("#modal-root").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h3>Backup e Dados do Sistema</h3>
+      <p class="m">Exporte uma cópia de segurança, mescle dados de um arquivo .JSON ou baixe a planilha do mês.</p>
+      <div class="bt" style="flex-direction:column">
+        <button class="btn" onclick="downloadBackup()">Baixar Backup (.JSON)</button>
+        <label class="btn ok" style="display:flex;cursor:pointer">
+          Importar e Mesclar Dados (.JSON)
+          <input type="file" accept=".json" style="display:none" onchange="mergeBackup(event)">
+        </label>
+        <button class="btn s" onclick="exportCSVForComp('${CURRENT_MONTH}')">Exportar CSV (${formatMonthLabel(CURRENT_MONTH)})</button>
+        <label class="btn s" style="display:flex;cursor:pointer">
+          Substituir Tudo pelo Backup (.JSON)
+          <input type="file" accept=".json" style="display:none" onchange="importBackup(event)">
+        </label>
+        <button class="btn d" onclick="resetDemo()">Restaurar Dados Iniciais</button>
+      </div>
+      <div class="bt"><button class="btn s" onclick="closeModal()">Fechar</button></div>
+    </div>
+  </div>`;
+}
+
+function downloadBackup() {
+  if (!IS_ADMIN) return;
+  const blob = new Blob([JSON.stringify(STATE, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `PontoRH-Backup-${CURRENT_MONTH}.json`;
+  a.click();
+  MotionFX.toast("Backup .JSON baixado com sucesso!");
+}
+
+let PENDING_IMPORT_PARSED = null;
+
+function handleSidebarImport(ev) {
+  if (!IS_ADMIN) return;
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = normalizeStateShape(JSON.parse(e.target.result));
+      if (!parsed || !parsed.employees || !parsed.points) {
+        alert("Arquivo JSON inválido. Selecione um arquivo de backup do PontoRH.");
+        return;
+      }
+      PENDING_IMPORT_PARSED = parsed;
+      $("#modal-root").innerHTML = `
+      <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+          <h3>Importar Backup (.JSON)</h3>
+          <p class="m">Arquivo carregado: <strong>${escHtml(file.name)}</strong> (${parsed.employees.length} colaboradores/prestadores encontrados).</p>
+          <p class="m">Como deseja aplicar este backup no sistema?</p>
+          <div class="bt" style="flex-direction:column;margin-top:14px">
+            <button class="btn ok" onclick="confirmPendingImport('merge')">Mesclar com os Dados Atuais (Recomendado)</button>
+            <button class="btn" onclick="confirmPendingImport('replace')">Substituir Tudo pelo Backup</button>
+            <button class="btn s" onclick="PENDING_IMPORT_PARSED=null;closeModal()">Cancelar</button>
+          </div>
+        </div>
+      </div>`;
+    } catch (_) {
+      alert("Erro ao ler o arquivo JSON.");
+    } finally {
+      ev.target.value = "";
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function applyMergeIncomingState(incoming) {
+  const idMap = {};
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  incoming.employees.forEach(incEmp => {
+    const cleanCpf = String(incEmp.cpf || "").replace(/\D/g, "");
+    const cleanName = String(incEmp.n || "").trim().toLowerCase();
+    const existing = STATE.employees.find(cur =>
+      (incEmp.uid && cur.uid === incEmp.uid) ||
+      (cleanCpf.length >= 11 && String(cur.cpf || "").replace(/\D/g, "") === cleanCpf) ||
+      (cleanName && String(cur.n || "").trim().toLowerCase() === cleanName)
+    );
+
+    if (existing) {
+      idMap[incEmp.id] = existing.id;
+      Object.keys(incEmp).forEach(k => {
+        if (["id", "uid", "docs", "attachments"].includes(k)) return;
+        const curVal = existing[k];
+        const incVal = incEmp[k];
+        if ((curVal === "" || curVal == null) && incVal !== "" && incVal != null) {
+          existing[k] = incVal;
+        }
+      });
+      if (Array.isArray(incEmp.docs)) {
+        existing.docs = (existing.docs || []).map((v, idx) => Boolean(v || incEmp.docs[idx]));
+      }
+      if (Array.isArray(incEmp.attachments) && incEmp.attachments.length > 0) {
+        const existingAttIds = new Set((existing.attachments || []).map(a => a.id));
+        if (!Array.isArray(existing.attachments)) existing.attachments = [];
+        incEmp.attachments.forEach(att => {
+          if (!existingAttIds.has(att.id)) {
+            existing.attachments.push({ ...att });
+          }
+        });
+      }
+      updatedCount++;
+    } else {
+      const isolated = createIsolatedEmployee(
+        { ...incEmp, id: undefined },
+        STATE.employees
+      );
+      STATE.employees.push(isolated);
+      idMap[incEmp.id] = isolated.id;
+      addedCount++;
+    }
+  });
+
+  Object.keys(incoming.points || {}).forEach(comp => {
+    if (!STATE.points[comp]) STATE.points[comp] = {};
+    const compObj = incoming.points[comp] || {};
+    Object.keys(compObj).forEach(oldId => {
+      const mappedId = idMap[oldId] != null ? idMap[oldId] : oldId;
+      const incRows = compObj[oldId];
+      if (!Array.isArray(incRows)) return;
+
+      if (!Array.isArray(STATE.points[comp][mappedId])) {
+        STATE.points[comp][mappedId] = incRows.map(r => ({ ...r, p: r.p ? [...r.p] : r.p }));
+      } else {
+        const curRows = STATE.points[comp][mappedId];
+        incRows.forEach(ir => {
+          const cr = curRows.find(x => x.d === ir.d);
+          if (!cr) {
+            curRows.push({ ...ir, p: ir.p ? [...ir.p] : ir.p });
+          } else if ((cr.t === "—" || cr.t === "Pendente") && ir.t && ir.t !== "—") {
+            cr.t = ir.t;
+            cr.p = ir.p ? [...ir.p] : null;
+            if (ir.obs && !cr.obs) cr.obs = ir.obs;
+          }
+        });
+      }
+    });
+  });
+
+  if (!STATE.employees.some(x => String(x.id) === String(E))) {
+    E = STATE.employees[0]?.id || 1;
+  }
+
+  closeModal();
+  go({ animate: true });
+  await syncAllToCloud();
+  MotionFX.toast(`Mesclado: +${addedCount} novo(s), ${updatedCount} atualizado(s)!`);
+}
+
+async function confirmPendingImport(mode) {
+  if (!IS_ADMIN || !PENDING_IMPORT_PARSED) return;
+  const incoming = PENDING_IMPORT_PARSED;
+  PENDING_IMPORT_PARSED = null;
+
+  if (mode === "replace") {
+    STATE = incoming;
+    E = STATE.employees[0]?.id || 1;
+    closeModal();
+    go({ animate: true });
+    await syncAllToCloud();
+    MotionFX.toast("Backup restaurado e sincronizado na nuvem!");
+  } else {
+    await applyMergeIncomingState(incoming);
+  }
+}
+
+function mergeBackup(ev) {
+  if (!IS_ADMIN) return;
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const incoming = normalizeStateShape(JSON.parse(e.target.result));
+      if (!incoming || !incoming.employees || !incoming.points) {
+        alert("Arquivo JSON inválido.");
+        return;
+      }
+      applyMergeIncomingState(incoming);
+    } catch (err) {
+      alert("Erro ao mesclar o arquivo JSON.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function importBackup(ev) {
+  if (!IS_ADMIN) return;
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const parsed = normalizeStateShape(JSON.parse(e.target.result));
+      if (parsed && parsed.employees && parsed.points) {
+        STATE = parsed;
+        E = STATE.employees[0]?.id || 1;
+        closeModal();
+        go({ animate: true });
+        await syncAllToCloud();
+        MotionFX.toast("Backup restaurado e sincronizado na nuvem!");
+      } else alert("Arquivo inválido.");
+    } catch (err) { alert("Erro ao ler JSON."); }
+  };
+  reader.readAsText(file);
+}
+
+async function resetDemo() {
+  if (!IS_ADMIN) return;
+  if (!confirm("Restaurar os dados iniciais da equipe?")) return;
+  STATE = createDefaultState();
+  UI.expandedTeamCards.clear();
+  E = STATE.employees[0]?.id || 1;
+  closeModal();
+  go({ animate: true });
+  await syncAllToCloud();
+  MotionFX.toast("Dados iniciais restaurados e sincronizados", "warn");
+}
+
+function exportCSVForComp(comp) {
+  ensureMonthData(comp);
+  const header = ["Competencia","Nome","Regime","CNPJ_MEI","CPF","Banco","Chave_PIX","Setor","Cargo","Valor_Base","Horas_Adicionais","Valor_Adicional","Horas_Negativas","Desconto_Horas","Ajuda_Custo","INSS","IRRF","Valor_Liquido_NF"];
+  const lines = [header.join(";")];
+
+  STATE.employees.forEach(emp => {
+    const m = calcMetrics(emp, comp);
+    lines.push([
+      comp, `"${emp.n}"`, emp.regime, `"${emp.cnpjMei || ""}"`, `"${emp.cpf || ""}"`, `"${emp.banco || ""}"`, `"${emp.pix || ""}"`, `"${emp.s}"`, `"${emp.c}"`,
+      emp.sal.toFixed(2).replace(".",","), hm(m.ex), m.exVal.toFixed(2).replace(".",","),
+      hm(m.ng), m.ngVal.toFixed(2).replace(".",","), m.ajuda.toFixed(2).replace(".",","),
+      m.inss.toFixed(2).replace(".",","), m.irrf.toFixed(2).replace(".",","),
+      m.liquido.toFixed(2).replace(".",",")
+    ].join(";"));
+  });
+
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Relatorio-PontoRH-${comp}.csv`;
+  a.click();
+  MotionFX.toast(`Planilha ${comp}.csv exportada!`);
+}
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute("data-theme") || "light";
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  const icon = $("#theme-icon");
+  const lbl = $("#theme-label");
+  if (lbl) {
+    lbl.textContent = next === "dark" ? "Tema (Escuro)" : "Tema (Claro)";
+  }
+  if (icon) {
+    icon.style.transition = "transform .35s cubic-bezier(.34,1.56,.64,1)";
+    icon.style.transform = next === "dark" ? "rotate(180deg) scale(1.1)" : "rotate(0deg) scale(1)";
+  }
+}
+
+// Expõe funções no escopo global (window)
+Object.assign(window, {
+  UI, go, ir, openEmployeeInTeam, toggleSidebar, closeSidebar,
+  toggleTeamCard, selectCurrentEmployee, stepEmployee,
+  handleAttachmentUpload, previewAttachment, downloadAttachment, deleteAttachment,
+  handleLiveNameInput, toggleDoc, quickFillDay, fillStandardMonth, clearMonthRows,
+  triggerMonthlyReport, closeModal, openAdminLoginModal, loginWithEmailForm, logoutAdmin,
+  openManageAdminsModal, addAdminEmail, removeAdminEmail,
+  forceSyncNow, triggerInstallApp, openPointModal,
+  savePointEdit, openEmpModal, toggleRegimeFields, saveEmp, deleteEmp,
+  openBackupModal, downloadBackup, handleSidebarImport, confirmPendingImport,
+  mergeBackup, importBackup, resetDemo, exportCSVForComp, toggleTheme,
+  set PAST_COMP(v) { PAST_COMP = v; },
+  get PAST_COMP() { return PAST_COMP; },
+  set REPORT_GENERATED_FOR(v) { REPORT_GENERATED_FOR = v; },
+  get REPORT_GENERATED_FOR() { return REPORT_GENERATED_FOR; },
+  set E(v) { E = v; },
+  get E() { return E; }
+});
+
+window.addEventListener("resize", () => MotionFX.updateNavInk());
+
+// =========================================================
+// 7. INICIALIZAÇÃO IMEDIATA (ESPECTADOR DIRETO + SESSÃO ADMIN)
+// =========================================================
+const savedNav = loadNavState();
+if (savedNav) {
+  if (savedNav.V && ["painel", "equipe", "ponto", "holerite", "passados"].includes(savedNav.V)) {
+    V = savedNav.V;
+  }
+  if (savedNav.E && STATE.employees.some(x => String(x.id) === String(savedNav.E))) {
+    E = savedNav.E;
+  }
+  if (savedNav.PAST_COMP) PAST_COMP = savedNav.PAST_COMP;
+}
+
+// Inicia imediatamente em modo Espectador (ou Admin se já autenticado)
+setAccessMode({ isAdmin: false });
+go({ animate: false });
+connectUnifiedCloudListeners();
+setTimeout(hideSplashScreen, 1200);
+
+if (firebaseAuth) {
+  onAuthStateChanged(firebaseAuth, async (user) => {
+    if (user && !user.isAnonymous) {
+      const email = (user.email || "").toLowerCase();
+      if (isEmailAuthorizedAdmin(email)) {
+        setAccessMode({ isAdmin: true, email });
+        go({ animate: false });
+        return;
+      } else {
+        await signOut(firebaseAuth);
+        setAccessMode({ isAdmin: false });
+        go({ animate: false });
+        MotionFX.toast(`E-mail "${email}" sem permissão administrativa.`, "warn");
+        return;
+      }
+    }
+    setAccessMode({ isAdmin: false });
+    go({ animate: false });
+  });
+}
+</script>
+</body>
+</html>
